@@ -89,7 +89,7 @@ helm-unittest:
 	helm unittest charts/runtime-enforcer/ --file "tests/**/*_test.yaml"
 
 .PHONY: test-e2e
-test-e2e: vet
+test-e2e: generate-ebpf vet
 ifeq ($(E2E_NO_REBUILD),)
 	TAG=latest make $(E2E_DEPS)
 endif
