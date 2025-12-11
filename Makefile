@@ -96,7 +96,7 @@ endif
 	go test ./test/e2e/ -v
 
 .PHONY: lint
-lint: golangci-lint ## Run golangci-lint linter
+lint: generate-ebpf golangci-lint ## Run golangci-lint linter
 	$(GOLANGCI_LINT) run
 
 .PHONY: lint-fix
