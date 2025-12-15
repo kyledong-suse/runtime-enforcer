@@ -16,12 +16,15 @@ const (
 	ErrorState    = "Error"
 )
 
+// todo!: we should support `AllowedPrefixes`.
+
 type WorkloadSecurityPolicyExecutables struct {
 	// allowed defines a list of executables that are allowed to run
 	// +optional
 	Allowed []string `json:"allowed,omitempty"`
 	// allowedPrefixes defines a list of prefix with which executables are allowed to run
 	// +optional
+	// +kubebuilder:validation:MaxItems=0
 	AllowedPrefixes []string `json:"allowedPrefixes,omitempty"`
 }
 
