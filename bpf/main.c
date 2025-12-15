@@ -37,6 +37,9 @@ static __always_inline __u64 cgrp_get_tracker_id(__u64 cgid) {
 // cgroup helpers
 /////////////////////////
 
+// Some of these cgroup helpers are taken and adapted from Tetragon
+// https://github.com/cilium/tetragon/pull/369
+
 #ifndef CGROUP_SUPER_MAGIC
 #define CGROUP_SUPER_MAGIC 0x27e0eb /* Cgroupv1 pseudo FS */
 #endif
@@ -151,7 +154,8 @@ static __always_inline struct cgroup *get_task_cgroup(struct task_struct *task,
 	}
 
 // See https://github.com/cilium/tetragon/pull/3574
-#ifndef __RHEL7_BPF_PROG
+// todo!: check our RHEL7 compatibility
+#ifndef __RHEL7__
 	/* If we are in Cgroupv2 return the default css_set cgroup */
 	if(cgrpfs_ver == CGROUP2_SUPER_MAGIC) {
 		bpf_core_read(&cgrp, sizeof(cgrp), &cgroups->dfl_cgrp);

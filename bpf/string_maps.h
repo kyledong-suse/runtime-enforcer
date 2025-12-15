@@ -3,7 +3,7 @@
 #define POLICY_STR_OUTER_MAX_ENTRIES 1
 #define POLICY_STR_INNER_MAX_ENTRIES 1
 
-/* Taken from https://github.com/cilium/tetragon/pull/1408
+/* Taken and adapted from https://github.com/cilium/tetragon/pull/1408
  * To facilitate an arbitrary number of strings that can be matched on, string matching
  * uses a hash look up. The problem with this is that the key to a hash has to be a fixed
  * size, so if the maximum string length is 128 bytes, then all stored strings will be

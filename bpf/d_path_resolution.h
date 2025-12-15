@@ -97,6 +97,8 @@ static long path_read_loop(__u32 index, void *data) {
 	return path_read(data);
 }
 
+// this method is inspired by Tetragon https://github.com/cilium/tetragon/pull/90
+// but simplified and reworked in light of our specific use case
 static __always_inline int bpf_d_path_approx(const struct path *path, char *buf) {
 	int off = MAX_PATH_LEN * 2;
 	struct dentry *dentry = NULL;

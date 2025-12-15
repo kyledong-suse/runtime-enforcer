@@ -1,3 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright Authors of Tetragon
+// Copyright 2025 Authors of Runtime-enforcer
+
 package labels
 
 import (
