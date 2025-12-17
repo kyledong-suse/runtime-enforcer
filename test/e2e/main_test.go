@@ -122,16 +122,18 @@ func getMainTest() types.Feature {
 
 				policy := v1alpha1.WorkloadSecurityPolicy{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:      proposal.ObjectMeta.Name,
+						Name:      "test-policy",
 						Namespace: proposal.ObjectMeta.Namespace,
 					},
 					Spec: v1alpha1.WorkloadSecurityPolicySpec{
 						Mode:     "protect",
 						Selector: proposal.Spec.Selector,
-						Rules: v1alpha1.WorkloadSecurityPolicyRules{
-							Executables: v1alpha1.WorkloadSecurityPolicyExecutables{
-								Allowed:         proposal.Spec.RulesByContainer["ubuntu"].Executables.Allowed,
-								AllowedPrefixes: proposal.Spec.RulesByContainer["ubuntu"].Executables.AllowedPrefixes,
+						RulesByContainer: map[string]*v1alpha1.WorkloadSecurityPolicyRules{
+							"ubuntu": &v1alpha1.WorkloadSecurityPolicyRules{
+								Executables: v1alpha1.WorkloadSecurityPolicyExecutables{
+									Allowed:         proposal.Spec.RulesByContainer["ubuntu"].Executables.Allowed,
+									AllowedPrefixes: proposal.Spec.RulesByContainer["ubuntu"].Executables.AllowedPrefixes,
+								},
 							},
 						},
 						Severity: 9,

@@ -101,7 +101,8 @@ func (in *WorkloadPolicyProposalSpec) DeepCopyInto(out *WorkloadPolicyProposalSp
 			if val == nil {
 				(*out)[key] = nil
 			} else {
-				in, out := &val, &outVal
+				inVal := (*in)[key]
+				in, out := &inVal, &outVal
 				*out = new(WorkloadSecurityPolicyRules)
 				(*in).DeepCopyInto(*out)
 			}
@@ -250,7 +251,22 @@ func (in *WorkloadSecurityPolicySpec) DeepCopyInto(out *WorkloadSecurityPolicySp
 		*out = new(v1.LabelSelector)
 		(*in).DeepCopyInto(*out)
 	}
-	in.Rules.DeepCopyInto(&out.Rules)
+	if in.RulesByContainer != nil {
+		in, out := &in.RulesByContainer, &out.RulesByContainer
+		*out = make(map[string]*WorkloadSecurityPolicyRules, len(*in))
+		for key, val := range *in {
+			var outVal *WorkloadSecurityPolicyRules
+			if val == nil {
+				(*out)[key] = nil
+			} else {
+				inVal := (*in)[key]
+				in, out := &inVal, &outVal
+				*out = new(WorkloadSecurityPolicyRules)
+				(*in).DeepCopyInto(*out)
+			}
+			(*out)[key] = outVal
+		}
+	}
 	if in.Tags != nil {
 		in, out := &in.Tags, &out.Tags
 		*out = make([]string, len(*in))

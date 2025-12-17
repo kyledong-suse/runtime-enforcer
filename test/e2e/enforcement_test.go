@@ -120,8 +120,10 @@ func getEnforcementTest() types.Feature {
 						},
 						Spec: v1alpha1.WorkloadSecurityPolicySpec{
 							Mode: "protect",
-							Rules: v1alpha1.WorkloadSecurityPolicyRules{
-								Executables: tc.AllowedExecutables,
+							RulesByContainer: map[string]*v1alpha1.WorkloadSecurityPolicyRules{
+								"ubuntu": &v1alpha1.WorkloadSecurityPolicyRules{
+									Executables: tc.AllowedExecutables,
+								},
 							},
 							Severity: 9,
 							Message:  "test-policy",

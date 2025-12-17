@@ -276,14 +276,16 @@ func getMonitoringTest() types.Feature {
 					},
 					Spec: v1alpha1.WorkloadSecurityPolicySpec{
 						Mode: "monitor",
-						Rules: v1alpha1.WorkloadSecurityPolicyRules{
-							Executables: v1alpha1.WorkloadSecurityPolicyExecutables{
-								Allowed: []string{
-									"/usr/bin/ls",
-									"/usr/bin/bash",
-									"/usr/bin/sleep",
+						RulesByContainer: map[string]*v1alpha1.WorkloadSecurityPolicyRules{
+							"ubuntu": &v1alpha1.WorkloadSecurityPolicyRules{
+								Executables: v1alpha1.WorkloadSecurityPolicyExecutables{
+									Allowed: []string{
+										"/usr/bin/ls",
+										"/usr/bin/bash",
+										"/usr/bin/sleep",
+									},
+									AllowedPrefixes: []string{},
 								},
-								AllowedPrefixes: []string{},
 							},
 						},
 						Severity: 9,

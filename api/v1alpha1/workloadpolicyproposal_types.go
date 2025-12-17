@@ -131,9 +131,10 @@ func (p *WorkloadPolicyProposal) AddPartialOwnerReferenceDetails(workloadKind st
 func (p *WorkloadPolicyProposalSpec) IntoWorkloadSecurityPolicySpec() WorkloadSecurityPolicySpec {
 	// Setting severity to 10 and enforcement mode to "monitor" by default.
 	return WorkloadSecurityPolicySpec{
-		Severity: MaximumSeverity,
-		Mode:     policymode.MonitorString,
-		Selector: p.Selector,
+		Severity:         MaximumSeverity,
+		Mode:             policymode.MonitorString,
+		Selector:         p.Selector,
+		RulesByContainer: p.RulesByContainer,
 	}
 }
 

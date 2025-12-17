@@ -38,8 +38,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: WorkloadPolicyProposalSpec defines the desired state
-              of WorkloadPolicyProposal.
+            description: WorkloadPolicyProposalSpec defines the desired state of WorkloadPolicyProposal.
             properties:
               rulesByContainer:
                 additionalProperties:
@@ -116,8 +115,8 @@ spec:
                 x-kubernetes-map-type: atomic
             type: object
           status:
-            description: WorkloadPolicyProposalStatus defines the observed
-              state of WorkloadPolicyProposal.
+            description: WorkloadPolicyProposalStatus defines the observed state of
+              WorkloadPolicyProposal.
             properties:
               conditions:
                 items:

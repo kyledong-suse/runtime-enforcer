@@ -146,10 +146,12 @@ func getPromotionTest() types.Feature {
 					},
 					Spec: v1alpha1.WorkloadSecurityPolicySpec{
 						Mode: "monitor",
-						Rules: v1alpha1.WorkloadSecurityPolicyRules{
-							Executables: v1alpha1.WorkloadSecurityPolicyExecutables{
-								Allowed:         proposal.Spec.RulesByContainer["ubuntu"].Executables.Allowed,
-								AllowedPrefixes: proposal.Spec.RulesByContainer["ubuntu"].Executables.AllowedPrefixes,
+						RulesByContainer: map[string]*v1alpha1.WorkloadSecurityPolicyRules{
+							"ubuntu": &v1alpha1.WorkloadSecurityPolicyRules{
+								Executables: v1alpha1.WorkloadSecurityPolicyExecutables{
+									Allowed:         proposal.Spec.RulesByContainer["ubuntu"].Executables.Allowed,
+									AllowedPrefixes: proposal.Spec.RulesByContainer["ubuntu"].Executables.AllowedPrefixes,
+								},
 							},
 						},
 						Severity: 10,
