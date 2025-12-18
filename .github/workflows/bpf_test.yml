@@ -32,7 +32,8 @@ jobs:
           make generate-ebpf
           go test -c ./internal/bpf/... -o tester
       - name: Validate bpf tests using bpfvalidator
-        uses: Andreagit97/bpfvalidator@v0.3.0
+        uses: ./.github/actions/bpfvalidator
         with:
           args: |
-            --config=$GITHUB_WORKSPACE/bpfvalidator-${{ matrix.arch }}-config.yaml
+            --config=$GITHUB_WORKSPACE/bpfvalidator-${{ matrix.arch }}-config.yaml --cmd="$GITHUB_WORKSPACE/tester -test.v"
+          arch: ${{ matrix.arch }}
