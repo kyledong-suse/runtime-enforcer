@@ -49,18 +49,6 @@
 #define STRING_MAPS_SIZE_9 (2048)
 #define STRING_MAPS_SIZE_10 (4096)
 
-// todo!: we want to compile only once so we should avoid the ifdef. We should probably not create
-// maps > 8. Test it, if it is feasible
-//
-// #ifdef __V511_BPF_PROG
-// #define STRING_MAPS_SIZE_7  (512 + 2)
-// #define STRING_MAPS_SIZE_8  (1024 + 2)
-// #define STRING_MAPS_SIZE_9  (2048 + 2)
-// #define STRING_MAPS_SIZE_10 (4096 + 2)
-// #else
-// #define STRING_MAPS_SIZE_7 (512)
-// #endif
-
 #define DEFINE_POLICY_STR_HASH_OF_MAPS(N)                              \
 	struct {                                                           \
 		__uint(type, BPF_MAP_TYPE_HASH_OF_MAPS);                       \
@@ -116,10 +104,3 @@ static __always_inline void* get_policy_string_map(int index, u64* policy_id) {
 	}
 	return 0;
 }
-
-// todo!: same as before for `__V511_BPF_PROG`
-// #ifdef __V511_BPF_PROG
-// DEFINE_POLICY_STR_HASH_OF_MAPS(8)
-// DEFINE_POLICY_STR_HASH_OF_MAPS(9)
-// DEFINE_POLICY_STR_HASH_OF_MAPS(10)
-// #endif
