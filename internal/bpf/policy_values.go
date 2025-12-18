@@ -119,9 +119,6 @@ func argStringSelectorValue(v string, removeNul bool) ([MaxStringMapsSize]byte, 
 	}
 
 	switch {
-	// this is for now the lowest supported kernel version (5.8 for the BPF ring buff usage)
-	case kernels.CurrVersionIsLowerThan("5.8"):
-		return ret, 0, errors.New("unsupported kernel version")
 	case kernels.CurrVersionIsLowerThan("5.11"):
 		// Until 5.11 we have max size of 512
 		if s > stringMapSize7 {
