@@ -124,7 +124,8 @@ func (m *Manager) findEventInChannel(ty ChannelType, cgID uint64, command string
 				m.logger.Info("Found event", "event", event)
 				return nil
 			}
-		case <-time.After(1 * time.Second):
+		// in CI when running inside a little VM things can be slow, we previously used 1 second here but it was not enough
+		case <-time.After(30 * time.Second):
 			return errors.New("timeout waiting for event")
 		}
 	}
