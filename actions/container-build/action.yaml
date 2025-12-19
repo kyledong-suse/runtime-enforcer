@@ -1,0 +1,102 @@
+name: container-build
+description: build/sign an image and publish its digest in artifact
+inputs:
+  digest_artifact_prefix:
+    description: the prefix of the artifact filename
+    default: digest-
+  arch:
+    description: |
+      List of target architectures to build.
+    default: amd64
+  dockerfile:
+    description: |
+      The dockerfile to build
+    default: Dockerfile
+  image:
+    description: |
+      The image name component in a fully qualified image. For reference:
+      ghcr.io/<repo>/<image>:<tag>
+    required: true
+  repo:
+    description: |
+      The repository component in a fully qualified image. For reference:
+      ghcr.io/<repo>/<image>:<tag>
+    required: true
+  GH_TOKEN:
+    description: |
+      The GitHub token with permission to publish images to ghcr.
+    required: true
+runs:
+  using: composite
+  steps: 
+    - name: Setup QEMU
+      uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+      with:
+        image: tonistiigi/binfmt:qemu-v10.0.4
+        cache-image: false
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@e468171a9de216ec08956ac3ada2f0791b6bd435 # v3.11.1
+    - name: Login to GitHub Container Registry
+      uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.repository_owner }}
+        password: ${{ inputs.GH_TOKEN }}
+    - name: Install cosign
+      uses: sigstore/cosign-installer@faadad0cce49287aee09b3a48701e75088a2c6ad # v4.0.0
+    - name: Docker meta
+      id: meta
+      uses: docker/metadata-action@318604b99e75e41977312d83839a89be02ca4893 # v5.9.0
+      with:
+        images: ghcr.io/${{ inputs.repo }}/${{ inputs.image }}
+    - name: Build and push ${{ inputs.image }} for ${{ inputs.arch }}
+      id: build-image
+      uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+      with:
+        context: .
+        file: ${{ inputs.dockerfile }}
+        labels: ${{ steps.meta.outputs.labels }}
+        platforms: linux/${{ inputs.arch }}
+        push: true
+        sbom: true
+        provenance: mode=max
+        tags: ghcr.io/${{ inputs.repo }}/${{ inputs.image }}
+        outputs: |
+          type=image,push=true,push-by-digest=true,name-canonical=true
+    # We need to disable the new bundle format enabled by default since
+    # cosign v3.x.x because some verification tools (e.g. slsactl, hauler and old
+    # cosign) are not able to properly verify the signatures using this
+    # new format
+    - name: Sign container image with cosign v2 signature format
+      shell: bash
+      run: |
+        cosign sign --yes --new-bundle-format=false --use-signing-config=false \
+          ghcr.io/${{ inputs.repo }}/${{ inputs.image }}@${{ steps.build-image.outputs.digest }}
+
+    - name: Sign container image with cosign v3 signature format
+      shell: bash
+      run: |
+        cosign sign --yes --new-bundle-format=true --use-signing-config=true \
+          ghcr.io/${{ inputs.repo }}/${{ inputs.image }}@${{ steps.build-image.outputs.digest }}
+
+    - name: Verify container image signature
+      shell: bash
+      run: |
+        cosign verify \
+          --certificate-oidc-issuer=https://token.actions.githubusercontent.com \
+          --certificate-identity="${{ github.server_url }}/${{ github.workflow_ref }}" \
+          ghcr.io/${{ inputs.repo }}/${{ inputs.image }}@${{ steps.build-image.outputs.digest }}
+
+    - name: Export digest
+      shell: bash
+      run: |
+        mkdir -p ${{ runner.temp }}/digests
+        digest="${{ steps.build-image.outputs.digest }}"
+        echo "${digest}" > "${{ runner.temp }}/digests/${{ inputs.image }}-${{ inputs.arch }}.txt"
+
+    - name: Upload digest
+      uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+      with:
+        name: ${{ inputs.digest_artifact_prefix }}${{ inputs.image }}-${{ inputs.arch }}
+        path: ${{ runner.temp }}/digests/*.txt
+        retention-days: 1
