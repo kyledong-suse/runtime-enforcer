@@ -29,8 +29,7 @@ func (w *PolicyWebhook) Default(ctx context.Context, obj runtime.Object) error {
 
 	// Add finalizer to ensure a policy cannot be deleted while in use by pods
 	// This handles both CREATE events and UPDATE events (e.g., when a proposal is promoted to a policy)
-	if !controllerutil.ContainsFinalizer(policy, v1alpha1.WorkloadPolicyFinalizer) {
-		controllerutil.AddFinalizer(policy, v1alpha1.WorkloadPolicyFinalizer)
+	if updated := controllerutil.AddFinalizer(policy, v1alpha1.WorkloadPolicyFinalizer); updated {
 		logger.Info("added finalizer to WorkloadPolicy", "name", policy.GetName())
 	}
 

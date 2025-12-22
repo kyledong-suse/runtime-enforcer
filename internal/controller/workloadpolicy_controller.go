@@ -97,7 +97,6 @@ func (r *WorkloadPolicyReconciler) handleDeletion(
 		original := policy.DeepCopy()
 		controllerutil.RemoveFinalizer(policy, v1alpha1.WorkloadPolicyFinalizer)
 		if err = r.Patch(ctx, policy, client.MergeFrom(original)); err != nil {
-			logger.Error(err, "Failed to remove finalizer")
 			return ctrl.Result{}, fmt.Errorf(
 				"failed to remove finalizer from WorkloadPolicy '%s/%s': %w",
 				policy.Namespace, policy.Name, err,
