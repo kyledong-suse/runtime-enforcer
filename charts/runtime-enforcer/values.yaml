@@ -33,8 +33,15 @@ daemon:
     args:
     - ""
     containerSecurityContext:
-      # todo!: evaluate the list of capabilities needed and drop the unneeded ones
-      privileged: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        add:
+          - BPF
+          - PERFMON
+          - SYS_RESOURCE
+          - SYS_PTRACE
+        drop:
+          - ALL
     image:
       repository: ghcr.io/neuvector/runtime-enforcer/daemon
       tag: v0.0.2
@@ -48,7 +55,8 @@ daemon:
         memory: 64Mi
   customCRISocketPath: ""
   podSecurityContext:
-    privileged: true
+    seccompProfile:
+      type: RuntimeDefault
   serviceAccount:
     annotations: {}
 kubernetesClusterDomain: cluster.local
