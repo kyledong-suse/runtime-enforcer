@@ -55,6 +55,7 @@ daemon:
         memory: 64Mi
   customCRISocketPath: ""
   podSecurityContext:
+    hostPID: true
     seccompProfile:
       type: RuntimeDefault
   serviceAccount:
