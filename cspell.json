@@ -59,7 +59,9 @@
         "syscall",
         "syscalls",
         "STIG",
-        "golangci"
+        "golangci",
+        "ebpf",
+        "rthook"
     ],
     "ignoreWords": [
         "clientgoscheme",
