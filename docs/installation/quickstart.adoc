@@ -15,7 +15,7 @@ This guide will walk you through the following steps:
 
 Before deployment, you need to prepare the following:
 
-* A Kubernetes cluster (for example, link:https://minikube.sigs.k8s.io/docs/[minikube] with CRI-O or containerd; Docker is not supported)
+* A Kubernetes cluster (you can simply run a [kind](https://kind.sigs.k8s.io/) cluster)
 * `helm` installed locally
 * `kubectl` installed locally
 * `cert-manager` installed in the cluster
@@ -62,7 +62,12 @@ helm repo update
 helm install otel-collector open-telemetry/opentelemetry-collector \
   --namespace otel-collector \
   --create-namespace \
-  --values ./docs/yaml/otel-config.yaml \
+  --set image.repository=otel/opentelemetry-collector-k8s \
+  --set mode=deployment \
+  --set config.exporters.debug.verbosity=normal \
+  --set "config.service.pipelines.traces.exporters[0]=debug" \
+  --set config.service.pipelines.metrics=null \
+  --set config.service.pipelines.logs=null \
   --wait
 ```
 
@@ -72,48 +77,20 @@ Follow these simple steps from your local machine to get Runtime-Enforcer up and
 
 === Install the Helm chart
 
-[NOTE]
-====
-Since we have not yet published a public release and the repo is not yet open source, we need to load the images into the cluster manually.
-====
-
-From the root directory of the project, run the following commands:
+Follow these simple steps from your local machine to get Runtime-Enforcer up and running:
 
 ```bash
-# Build the Docker images locally
-# operator image
-make build-operator-image
+# create a secret to download images from GitHub Container Registry
+kubectl create secret docker-registry github-auth \
+  --docker-server=ghcr.io \
+  --docker-username=<YOUR_USERNAME_GITHUB> \
+  --docker-password=<YOUR_PERSONAL_ACCESS_TOKEN> \
+  --docker-email=<not-needed@example.com>
 
-# daemon image
-make build-daemon-image
-
-# If you are using minikube, load the images into the cluster
-minikube image load ghcr.io/neuvector/runtime-enforcer/daemon:latest
-minikube image load ghcr.io/neuvector/runtime-enforcer/operator:latest
-
-# Install the Helm chart (using Linux capabilities instead of privileged mode)
 helm install runtime-enforcer ./charts/runtime-enforcer \
   --namespace runtime-enforcer \
   --create-namespace \
-  --set "daemon.daemon.containerSecurityContext.capabilities.add[0]=SYS_ADMIN" \
-  --set "daemon.daemon.containerSecurityContext.capabilities.add[1]=SYS_RESOURCE" \
-  --set "daemon.daemon.containerSecurityContext.capabilities.add[2]=SYS_PTRACE" \
-  --set operator.manager.image.tag=latest \
-  --set daemon.daemon.image.tag=latest \
-  --set telemetry.mode=custom \
-  --set telemetry.tracing=true \
-  --set telemetry.custom.endpoint=http://otel-collector-opentelemetry-collector.otel-collector.svc.cluster.local:4317 \
-  --set telemetry.custom.insecure=true \
-  --wait
-
-# or
-
-# Install the Helm chart (using privileged mode)
-helm install runtime-enforcer ./charts/runtime-enforcer \
-  --namespace runtime-enforcer \
-  --create-namespace \
-  --set daemon.daemon.containerSecurityContext.privileged=true \
-  --set daemon.daemon.containerSecurityContext.allowPrivilegeEscalation=true \
+  --set "imagePullSecrets[0].name=github-auth" \
   --set operator.manager.image.tag=latest \
   --set daemon.daemon.image.tag=latest \
   --set telemetry.mode=custom \
