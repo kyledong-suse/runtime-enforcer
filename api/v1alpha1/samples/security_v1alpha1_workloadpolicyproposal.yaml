@@ -13,5 +13,3 @@ spec:
       executables:
         allowed:
           - /nginx-ingress-controller
-        allowedPrefixes:
-          - /usr/bin/

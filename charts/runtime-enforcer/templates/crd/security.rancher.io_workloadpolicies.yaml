@@ -71,13 +71,6 @@ spec:
                           items:
                             type: string
                           type: array
-                        allowedPrefixes:
-                          description: allowedPrefixes defines a list of prefix with
-                            which executables are allowed to run
-                          items:
-                            type: string
-                          maxItems: 0
-                          type: array
                       type: object
                   type: object
                 description: rulesByContainer specifies for each container the list

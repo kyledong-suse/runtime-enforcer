@@ -13,8 +13,6 @@ spec:
     executables:
       allowed:
         - /nginx-ingress-controller
-      allowedPrefixes:
-        - /usr/bin/
   severity: 1 # optional a number between 1 and 10
   tags: ["MITRE"] # optional
   message: "custom error message in events" # optional

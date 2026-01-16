@@ -64,8 +64,6 @@ WorkloadPolicy is the Schema for the workloadpolicies API.
 |===
 | Field | Description | Default | Validation
 | *`allowed`* __string array__ | allowed defines a list of executables that are allowed to run + |  | 
-| *`allowedPrefixes`* __string array__ | allowedPrefixes defines a list of prefix with which executables are allowed to run + |  | MaxItems: 0 +
-
 |===
 
 
