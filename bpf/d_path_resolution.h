@@ -181,6 +181,15 @@ static __always_inline int bpf_d_path_approx(const struct path *path, char *buf)
 		}
 	}
 
+	// memfd files have no path in the filesystem so we never decremented the `curr_off`.
+	// As our last resort we try to read the current dentry.
+	if(data.curr_off == MAX_PATH_LEN * 2) {
+		// if we arrive here `data.resolved` could be:
+		// - `true` if there is no path like in case of memfd files.
+		// - `false` if we never found the final path root. In this case we will just return -1.
+		copy_name(data.bptr, &data.curr_off, data.dentry);
+	}
+
 	if(data.resolved) {
 		// if it is a successful resolution, we return the last byte we wrote
 		return data.curr_off;
