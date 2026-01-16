@@ -328,7 +328,7 @@ struct process_evt {
 	// MAX_PATH_LEN for the final path +
 	// MAX_PATH_LEN for storing the progressive path +
 	// MAX_PATH_LEN of empty space for padding when we do the string map lookups
-	char path[MAX_PATH_LEN * 4];
+	char path[MAX_PATH_LEN * 3];
 	// todo!: we need to add the atomic value for concurrency, see
 	// https://github.com/falcosecurity/libs/issues/2719
 };
@@ -468,15 +468,6 @@ int BPF_PROG(enforce_cgroup_policy, struct linux_binprm *bprm) {
 		return 0;
 	}
 
-	// We get some scratch space
-	//  Input buffer layout:
-	//        4096  |  4096  |  4096
-	//  ----------------------------------
-	//  |                  <--           |
-	//  ----------------------------------
-	//                       ^
-	//                       |-we write here
-
 	int zero = 0;
 	struct process_evt *evt =
 	        (struct process_evt *)bpf_map_lookup_elem(&process_evt_storage_map, &zero);
@@ -526,6 +517,14 @@ int BPF_PROG(enforce_cgroup_policy, struct linux_binprm *bprm) {
 	// the missing map as a not allowed event.
 	__u8 *match = NULL;
 	if(string_map) {
+		// Note that string_map will contain strings padded with extra NUL bytes
+		// (e.g.`/usr/bin/cat\0\0\0\0\0\0\0`). To have a fair comparison we need to account for the
+		// padding and that's the reason why our third segment in the buffer is full of NUL bytes.
+		//
+		//  buf   | MAX_PATH_LEN | MAX_PATH_LEN | MAX_PATH_LEN |
+		//                          /usr/bin/cat\0\0\0\0\0\0\0
+		//                          ^
+		// current_offset points here
 		match = bpf_map_lookup_elem(string_map, &evt->path[SAFE_PATH_ACCESS(current_offset)]);
 	}
 
