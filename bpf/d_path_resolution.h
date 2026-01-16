@@ -129,9 +129,9 @@ static __always_inline int bpf_d_path_approx(const struct path *path, char *buf)
 	}
 
 	if(d_unlinked(dentry)) {
-		// todo!: not sure if we need also the final \0 in the string
-		off -= sizeof(DELETED_STRING);
-		memcpy(&buf[SAFE_PATH_ACCESS(off)], DELETED_STRING, sizeof(DELETED_STRING));
+		// we don't need the terminator since the next `MAX_PATH_LEN` segment
+		off -= (sizeof(DELETED_STRING) - 1);
+		memcpy(&buf[SAFE_PATH_ACCESS(off)], DELETED_STRING, sizeof(DELETED_STRING) - 1);
 	}
 
 	struct path_read_data data = {
