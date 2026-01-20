@@ -40,9 +40,6 @@ func getPolicyPerContainerTest() types.Feature {
 
 			r := ctx.Value(key("client")).(*resources.Resources)
 
-			// Create a policy that allows:
-			// - init-container: bash and sleep
-			// - main-container: ls and sleep
 			policy := v1alpha1.WorkloadPolicy{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      policyName,
@@ -55,7 +52,6 @@ func getPolicyPerContainerTest() types.Feature {
 							Executables: v1alpha1.WorkloadPolicyExecutables{
 								Allowed: []string{
 									"/usr/bin/bash",
-									"/usr/bin/sleep",
 								},
 							},
 						},
@@ -100,7 +96,7 @@ func getPolicyPerContainerTest() types.Feature {
 								Image: "ubuntu",
 								Command: []string{
 									"bash", "-c",
-									"echo 'Init container completed successfully' && sleep 2",
+									"mkdir /tmp/ &>/dev/null; errno=$?; if [ $errno == 126 ]; then exit 0; fi; exit 1",
 								},
 							},
 						},
@@ -127,7 +123,9 @@ func getPolicyPerContainerTest() types.Feature {
 				err = r.Get(ctx, podName, workloadNamespace, &pod)
 				require.NoError(t, err, "failed to get pod")
 
-				// The init container completed successfully, which means bash was allowed to run
+				// The init container completed successfully, which means:
+				// 1. bash was allowed to run
+				// 2. mkdir was blocked with exit code 126 (blocked command failed as expected)
 				require.NotEmpty(t, pod.Status.InitContainerStatuses, "init container status should exist")
 				initStatus := pod.Status.InitContainerStatuses[0]
 				require.NotNil(t, initStatus.State.Terminated, "init container should have terminated")
