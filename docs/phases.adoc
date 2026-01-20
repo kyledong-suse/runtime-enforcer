@@ -23,19 +23,18 @@ Operationally, if you want complete proposals, enable learning first and then *(
 === How to enter and leave the `Learn` phase
 
 * *Enter*
-** Ensure learning is enabled on the daemon:
-*** Helm: `values.learning.enabled: true` (adds `--enable-learning` to the DaemonSet)
-*** Or run the daemon with `--enable-learning`
+** Ensure learning is enabled on inside of the helm chart values: `values.learning.enabled: true`
 ** No per-workload configuration is required to start generating proposals (proposals are created as exec events are observed).
 * *Leave*
 ** Mark the corresponding proposal as ready by setting the label: `security.rancher.io/policy-ready=true`
 ** This triggers creation of a `WorkloadPolicy` (defaulting to `mode: monitor`).
+** The `WorkloadPolicyProposal` is *not* automatically removed; instead, it is no longer updated with newly observed processes.
 
 === CRDs created/updated during this phase
 
 * *Created/updated*: `WorkloadPolicyProposal` (`security.rancher.io/v1alpha1`)
 ** Name format is derived from workload kind/name (for example `deploy-NAME`, `ds-NAME`, etc.).
-** The proposal is linked back to the owning workload via `ownerReferences`.
+** The proposal is linked back to the owning workload via `ownerReferences`. If the owning workload is deleted, the proposal is deleted as well.
 
 == Monitor phase
 
@@ -52,7 +51,7 @@ Operationally, if you want complete proposals, enable learning first and then *(
 ** A `WorkloadPolicy` is created (usually by approving a proposal), and ensure it has:
 *** `.spec.mode: monitor`
 *** `.spec.rulesByContainer` populated with allowed executables per container name
-** Bind workloads/pods to the policy by applying the label: `security.rancher.io/policy: WORKLOAD_POLICY_NAME`
+** Bind workloads/pods to the policy by applying the label: `security.rancher.io/policy: WORKLOAD_POLICY_NAME`. The label must be applied to the Pod. When dealing with workload types (such as Deployment), make sure the label is specified inside of the `PodTemplateSpec`.
 +
 Runtime-enforcer uses this label to decide which pods the policy applies to.
 
@@ -79,7 +78,7 @@ Runtime-enforcer uses this label to decide which pods the policy applies to.
 === How to enter and leave the phase
 
 * *Enter*
-** Ensure the workload is bound via `security.rancher.io/policy: WORKLOAD_POLICY_NAME`.
+** Ensure the workload is bound via `security.rancher.io/policy: WORKLOAD_POLICY_NAME`. The label must be applied to the Pod. When dealing with workload types (such as Deployment), make sure the label is specified inside of the `PodTemplateSpec`.
 ** Update the `WorkloadPolicy` to set `.spec.mode: protect`.
 * *Leave*
 ** *Protect → Monitor*: update the `WorkloadPolicy` and set `.spec.mode: monitor`.
