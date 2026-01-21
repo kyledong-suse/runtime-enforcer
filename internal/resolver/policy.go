@@ -11,6 +11,8 @@ import (
 )
 
 type PolicyID = uint64
+type policyByContainer = map[ContainerName]PolicyID
+type namespacedPolicyName = string
 
 const (
 	// PolicyIDNone is used to indicate no policy associated with the cgroup.
@@ -24,18 +26,18 @@ func (r *Resolver) allocPolicyID() PolicyID {
 }
 
 // this must be called with the resolver lock held.
-func (r *Resolver) applyPolicyToPod(state *podState, wp map[string]PolicyID) error {
+func (r *Resolver) applyPolicyToPod(state *podState, polByContainer policyByContainer) error {
 	for _, container := range state.containers {
-		polID, ok := wp[container.name]
+		polID, ok := polByContainer[container.name]
 		if !ok {
 			r.logger.Error("container unprotected",
 				"pod name", state.podName(),
-				"wp", state.policyLabel(),
+				"policy", state.policyLabel(),
 				"container", container.name)
 			continue
 		}
 		if err := r.cgroupToPolicyMapUpdateFunc(polID, []CgroupID{container.cgID}, bpf.AddPolicyToCgroups); err != nil {
-			return fmt.Errorf("failed to update cgroup to policy map for pod %s, container %s, wp %s: %w",
+			return fmt.Errorf("failed to update cgroup to policy map for pod %s, container %s, policy %s: %w",
 				state.podName(), container.name, state.policyLabel(), err)
 		}
 	}
@@ -80,7 +82,7 @@ func (r *Resolver) addWP(wp *v1alpha1.WorkloadPolicy) error {
 		return fmt.Errorf("workload policy already exists in internal state: %s", wpKey)
 	}
 
-	r.wpState[wpKey] = make(map[string]PolicyID, len(wp.Spec.RulesByContainer))
+	r.wpState[wpKey] = make(policyByContainer, len(wp.Spec.RulesByContainer))
 
 	for containerName, containerRules := range wp.Spec.RulesByContainer {
 		polID := r.allocPolicyID()

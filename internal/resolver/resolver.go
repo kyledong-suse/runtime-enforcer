@@ -32,7 +32,7 @@ type Resolver struct {
 	criResolver     *criResolver
 
 	nextPolicyID                PolicyID
-	wpState                     map[string]map[string]PolicyID
+	wpState                     map[namespacedPolicyName]policyByContainer
 	policyValuesFunc            func(policyID PolicyID, values []string, op bpf.PolicyValuesOperation) error
 	policyModeUpdateFunc        func(policyID PolicyID, mode policymode.Mode, op bpf.PolicyModeOperation) error
 	cgTrackerUpdateFunc         func(cgID uint64, cgroupPath string) error
@@ -66,7 +66,7 @@ func NewResolver(
 		nriSettings:                 nriSettings,
 		policyValuesFunc:            policyValuesFunc,
 		policyModeUpdateFunc:        policyModeUpdateFunc,
-		wpState:                     make(map[string]map[string]PolicyID),
+		wpState:                     make(map[namespacedPolicyName]policyByContainer),
 		nextPolicyID:                PolicyID(1),
 	}
 
