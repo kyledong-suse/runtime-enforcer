@@ -1,0 +1,155 @@
+package nri
+
+import (
+	"fmt"
+	"regexp"
+	"strings"
+
+	"github.com/containerd/nri/pkg/api"
+	"github.com/neuvector/runtime-enforcer/internal/types/workloadkind"
+)
+
+// final 8-10 digits.
+var cronJobNameRegexp = regexp.MustCompile(`(.+)-\d{8,10}$`)
+
+// final 5 alphanumeric characters.
+var possibleReplicaSetRegexp = regexp.MustCompile(`(.+)-[a-z0-9]{5}$`)
+
+const (
+	// known labels.
+	podTemplateHashLabel = "pod-template-hash"
+	oldJobNameLabel      = "job-name"
+	newJobNameLabel      = "batch.kubernetes.io/job-name"
+	statefulsetLabel     = "statefulset.kubernetes.io/pod-name"
+	daemonsetLabel       = "controller-revision-hash"
+	// we want to keep the suffix within 5 chars to avoid exceeding the 63 character limit.
+	truncatedSuffix = "-trnc"
+)
+
+func parseDeployment(podName string) (string, workloadkind.Kind) {
+	// Usually the pod-name for a pod managed by a deployment has the format:
+	// pod-name: [deployment-name]-[hash]-[random]
+	// But we need to take into account that the pod-name has a maximum length of 63 characters,
+	// so if the name of the deployment is too long, it will be truncated.
+	// Please note that the deployment shouldn't have as well more than 63 characters, but we still need some room for [hash]-[random].
+	// Moreover k8s doesn't enforce any check so potentially the deployment name could be longer than 63 characters.
+	//
+	// Concrete examples:
+	// 1. Regular case
+	//    deployment-name: ubuntu-deployment-674bcc58f4-pwvps
+	//    pod-name: ubuntu-deployment
+	//
+	// 2. 63 characters
+	//    deployment-name: ubuntu-deploymenttttttttttttttttttttttttttttttttttttttttttttttt
+	//    pod-name: ubuntu-deploymenttttttttttttttttttttttttttttttttttttttttttq8fcg
+	//    In this case we have just the final [random] without the `-`. The name of the daemonset is truncated.
+	//
+	// 3. 56 characters
+	//    deployment-name: ubuntu-deploymentttttttttttttttttttttttttttttttttttttttt
+	//    pod-name: ubuntu-deploymentttttttttttttttttttttttttttttttttttttttt-65fb8c
+	//    In this case `-[hash]-[random]` are just collapsed into `-65fb8c` but the name is not truncated
+
+	// we check if there is at least a `-`
+	firstDashIndex := strings.LastIndex(podName, "-")
+	if firstDashIndex == -1 {
+		// if no `-` is present, we consider the name as truncated, we remove the suffix of 5 chars and we append our truncated suffix
+		return podName[:len(podName)-5] + truncatedSuffix, workloadkind.Deployment
+	}
+
+	remainingName := podName[:firstDashIndex]
+	// we check if there is another `-`.
+	secondDashIndex := strings.LastIndex(remainingName, "-")
+	if secondDashIndex == -1 {
+		// if no it means the hash was collapsed but the name of the deployment was not truncated.
+		return remainingName, workloadkind.Deployment
+	}
+	// if there is a second `-` the name of the deployment is everything before it
+	return remainingName[:secondDashIndex], workloadkind.Deployment
+}
+
+func parseDaemonSet(podName string) (string, workloadkind.Kind) {
+	// Usually the pod-name for a pod managed by a daemonset has the format:
+	// pod-name: [daemonset-name]-[random-5chars]
+	// But we need to take into account that the pod-name has a maximum length of 63 characters,
+	// so if the name of the daemonset is too long, it will be truncated and the `-` will be omitted.
+	//
+	// Concrete examples:
+	// 1. Regular case
+	//    daemonset-name: ubuntu-daemonset
+	//    pod-name: ubuntu-daemonset-6qq8v
+	//
+	// 2. Long case
+	//    daemonset-name: ubuntu-daemonsetttttttttttttttttttttttttttttttttttttttttttttttttttt
+	//    pod-name: ubuntu-daemonsettttttttttttttttttttttttttttttttttttttttttt6qq8v
+	//    So the name of the daemonset is truncated and the `-` will be omitted.
+
+	// we remove the suffix that is always present
+	nameWithoutSuffix := podName[:len(podName)-5]
+
+	if strings.HasSuffix(nameWithoutSuffix, "-") {
+		return strings.TrimSuffix(nameWithoutSuffix, "-"), workloadkind.DaemonSet
+	}
+	// if the `-` is not present, we consider the name as truncated, we add a suffix to signal it
+	return nameWithoutSuffix + truncatedSuffix, workloadkind.DaemonSet
+}
+
+func parseJobCronJob(jobName string) (string, workloadkind.Kind) {
+	m := cronJobNameRegexp.FindStringSubmatch(jobName)
+	if len(m) == 2 { //nolint:mnd // m[0] is the full match, m[1] is the job name
+		return m[1], workloadkind.CronJob
+	}
+	return jobName, workloadkind.Job
+}
+
+func parseStatefulSet(podName string) (string, workloadkind.Kind) {
+	// pod-name: [statefulset-name]-[progressive-index]
+	// the statefulset name has at most 63 characters, and the `-` cannot be omitted so its enough to just take the prefix
+	lastDashIndex := strings.LastIndex(podName, "-")
+	if lastDashIndex == -1 {
+		panic(fmt.Sprintf("statefulset: missing last '-' in pod name '%s'", podName))
+	}
+	return podName[:lastDashIndex], workloadkind.StatefulSet
+}
+
+func getWorkloadInfo(pod *api.PodSandbox) (string, workloadkind.Kind) {
+	podName := pod.GetName()
+	labels := pod.GetLabels()
+
+	// DEPLOYMENT
+	// if a pod is created by a deployment it has the template hash label
+	if _, ok := labels[podTemplateHashLabel]; ok {
+		return parseDeployment(podName)
+	}
+
+	// STATEFULSET
+	// if a pod is created by a statefulset it has the statefulset label
+	if statefulPodName, ok := labels[statefulsetLabel]; ok {
+		return parseStatefulSet(statefulPodName)
+	}
+
+	// DAEMONSET
+	// if a pod is created by a daemonset it has the controller revision hash label
+	if _, ok := labels[daemonsetLabel]; ok {
+		return parseDaemonSet(podName)
+	}
+
+	// CRONJOB/JOB
+	// both have the `job-name`/`batch.kubernetes.io/job-name` label. To distinguish them we use the random generated suffix after the cronjob.
+	// it's still possible there is a job with a really weird suffix that is not a cronjob, but for now we don't consider this case.
+	if jobName, ok := labels[oldJobNameLabel]; ok {
+		return parseJobCronJob(jobName)
+	}
+	if jobName, ok := labels[newJobNameLabel]; ok {
+		return parseJobCronJob(jobName)
+	}
+
+	// POSSIBLE REPLICASET
+	// We are still interested in detecting replicasets but we have no actual parsing logic for them. What we do is we check if the pod has at least the final `-[random-5chars]`. If yes we elect it as a potential replicaset. If it doesn't, we mark it as a pod.
+	// todo!: we need to add a k8s client to be sure
+	m := possibleReplicaSetRegexp.FindStringSubmatch(podName)
+	if len(m) == 2 { //nolint:mnd // m[0] is the full match, m[1] is the replicaset name
+		return m[1], workloadkind.ReplicaSet
+	}
+
+	return podName, workloadkind.Pod
+}

@@ -3,16 +3,30 @@ package nri
 import (
 	"context"
 	"log/slog"
+	"strings"
 
 	"github.com/containerd/nri/pkg/api"
 	"github.com/containerd/nri/pkg/stub"
 	"github.com/neuvector/runtime-enforcer/internal/resolver"
+	"github.com/neuvector/runtime-enforcer/internal/types/workloadkind"
 )
 
 type plugin struct {
 	stub     stub.Stub
 	logger   *slog.Logger
 	resolver *resolver.Resolver
+}
+
+func (p *plugin) getWorkloadInfoAndLog(ctx context.Context, pod *api.PodSandbox) (string, workloadkind.Kind) {
+	workloadName, workloadKind := getWorkloadInfo(pod)
+	if strings.HasSuffix(workloadName, truncatedSuffix) {
+		p.logger.WarnContext(ctx, "Detected truncated workload name",
+			"name", workloadName,
+			"kind", workloadKind,
+			"pod", pod.GetName(),
+		)
+	}
+	return workloadName, workloadKind
 }
 
 // Synchronize synchronizes the state of the NRI plugin with the current state of the pods and containers.
@@ -50,6 +64,7 @@ func (p *plugin) Synchronize(
 			continue
 		}
 
+		workloadName, workloadKind := p.getWorkloadInfoAndLog(ctx, pod)
 		podData := &resolver.PodData{
 			UID:       pod.GetId(),
 			Name:      pod.GetName(),
@@ -57,7 +72,9 @@ func (p *plugin) Synchronize(
 			Labels:    pod.GetLabels(),
 			// TODO!: we should try to extract the workload name/type from the pod annotations
 			// this could be nil
-			Containers: tmpSandboxes[pod.GetId()],
+			Containers:   tmpSandboxes[pod.GetId()],
+			WorkloadName: workloadName,
+			WorkloadType: string(workloadKind),
 		}
 
 		if err := p.resolver.AddPodContainerFromNri(podData); err != nil {
@@ -79,6 +96,7 @@ func (p *plugin) StartContainer(
 			"error", err)
 	}
 
+	workloadName, workloadKind := p.getWorkloadInfoAndLog(ctx, pod)
 	podData := &resolver.PodData{
 		UID:       pod.GetId(),
 		Name:      pod.GetName(),
@@ -92,6 +110,8 @@ func (p *plugin) StartContainer(
 				Name: container.GetName(),
 			},
 		},
+		WorkloadName: workloadName,
+		WorkloadType: string(workloadKind),
 	}
 
 	if err = p.resolver.AddPodContainerFromNri(podData); err != nil {
