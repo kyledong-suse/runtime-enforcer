@@ -2,7 +2,6 @@ package resolver
 
 import (
 	"fmt"
-	"log/slog"
 
 	"github.com/neuvector/runtime-enforcer/api/v1alpha1"
 	"github.com/neuvector/runtime-enforcer/internal/bpf"
@@ -223,11 +222,10 @@ func (r *Resolver) handleWPDelete(wp *v1alpha1.WorkloadPolicy) error {
 	return nil
 }
 
-func resourceCheck(logger *slog.Logger, prefix string, obj interface{}) *v1alpha1.WorkloadPolicy {
+func resourceCheck(method string, obj interface{}) *v1alpha1.WorkloadPolicy {
 	wp, ok := obj.(*v1alpha1.WorkloadPolicy)
 	if !ok {
-		logger.Error("unexpected object type", "method", prefix, "object", obj)
-		return nil
+		panic(fmt.Sprintf("unexpected object type: method=%s, object=%v", method, obj))
 	}
 	return wp
 }
@@ -235,7 +233,7 @@ func resourceCheck(logger *slog.Logger, prefix string, obj interface{}) *v1alpha
 func (r *Resolver) PolicyEventHandlers() cache.ResourceEventHandler {
 	return cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
-			wp := resourceCheck(r.logger, "add-policy", obj)
+			wp := resourceCheck("add-policy", obj)
 			if wp == nil {
 				return
 			}
@@ -246,11 +244,11 @@ func (r *Resolver) PolicyEventHandlers() cache.ResourceEventHandler {
 			}
 		},
 		UpdateFunc: func(oldObj, newObj interface{}) {
-			newWp := resourceCheck(r.logger, "update-policy", newObj)
+			newWp := resourceCheck("update-policy", newObj)
 			if newWp == nil {
 				return
 			}
-			oldWp := resourceCheck(r.logger, "update-policy", oldObj)
+			oldWp := resourceCheck("update-policy", oldObj)
 			if oldWp == nil {
 				return
 			}
@@ -260,7 +258,7 @@ func (r *Resolver) PolicyEventHandlers() cache.ResourceEventHandler {
 			}
 		},
 		DeleteFunc: func(obj interface{}) {
-			wp := resourceCheck(r.logger, "delete-policy", obj)
+			wp := resourceCheck("delete-policy", obj)
 			if wp == nil {
 				return
 			}
