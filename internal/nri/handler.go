@@ -2,17 +2,19 @@ package nri
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"os"
 	"time"
 
+	retry "github.com/avast/retry-go/v4"
 	"github.com/containerd/nri/pkg/stub"
 	"github.com/neuvector/runtime-enforcer/internal/resolver"
 )
 
 const (
-	ReconnectWaitTime = time.Second * 1
-	ConnectTimeout    = time.Second * 5
+	maxDelay = time.Minute * 1
 )
 
 type Handler struct {
@@ -35,14 +37,13 @@ func (h *Handler) startNRIPlugin(ctx context.Context) error {
 	var err error
 
 	p := &plugin{
-		logger:   h.logger,
+		logger:   h.logger.With("component", "nri-plugin"),
 		resolver: h.resolver,
 	}
 
 	opts := []stub.Option{
 		stub.WithPluginIdx(h.pluginIndex),
 		stub.WithSocketPath(h.socketPath),
-		stub.WithOnClose(p.onClose),
 	}
 
 	p.stub, err = stub.New(p, opts...)
@@ -58,16 +59,34 @@ func (h *Handler) startNRIPlugin(ctx context.Context) error {
 }
 
 func (h *Handler) Start(ctx context.Context) error {
-	for {
-		select {
-		case <-ctx.Done():
-			return nil
-		default:
+	// isRetryable is called only in case of err != nil
+	isRetryable := func(err error) bool {
+		// We stop in case of:
+		// - context.Canceled/DeadlineExceeded
+		// - unexisting socket
+		if errors.Is(err, context.Canceled) ||
+			errors.Is(err, context.DeadlineExceeded) ||
+			errors.Is(err, os.ErrNotExist) {
+			return false
 		}
-		err := h.startNRIPlugin(ctx)
-		if err != nil {
-			h.logger.InfoContext(ctx, "nri hook restarted", "error", err)
-		}
-		time.Sleep(ReconnectWaitTime)
+		return true
 	}
+
+	return retry.Do(
+		func() error {
+			return h.startNRIPlugin(ctx)
+		},
+		retry.Attempts(0),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.MaxDelay(maxDelay),
+		retry.RetryIf(isRetryable),
+		retry.OnRetry(func(n uint, err error) {
+			// n = 0 for the first retry
+			h.logger.WarnContext(ctx, "error during NRI plugin execution, retrying...",
+				"attempt", n+1,
+				"error", err,
+			)
+		}),
+	)
 }

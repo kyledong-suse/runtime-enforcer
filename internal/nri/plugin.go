@@ -132,8 +132,3 @@ func (p *plugin) RemoveContainer(ctx context.Context, pod *api.PodSandbox, conta
 	}
 	return nil
 }
-
-// This would happen when container runtime restarts and when we trigger the NRI timeout.
-func (p *plugin) onClose() {
-	p.logger.Info("Connection to the runtime lost...")
-}
