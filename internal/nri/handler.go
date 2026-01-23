@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
+	"net"
 	"time"
 
 	retry "github.com/avast/retry-go/v4"
@@ -24,13 +24,50 @@ type Handler struct {
 	resolver    *resolver.Resolver
 }
 
-func NewNRIHandler(socketPath, pluginIndex string, logger *slog.Logger, r *resolver.Resolver) *Handler {
-	return &Handler{
+func NewNRIHandler(socketPath, pluginIndex string, logger *slog.Logger, r *resolver.Resolver) (*Handler, error) {
+	h := &Handler{
 		socketPath:  socketPath,
 		pluginIndex: pluginIndex,
 		logger:      logger.With("component", "nri-handler"),
 		resolver:    r,
 	}
+	if err := h.checkNRISupport(); err != nil {
+		return nil, fmt.Errorf("NRI support check failed: %w", err)
+	}
+	return h, nil
+}
+
+func (h *Handler) checkNRISupport() error {
+	const (
+		connectionTimeout = 3 * time.Second
+		attempts          = 5
+	)
+
+	tryConnect := func() error {
+		h.logger.Info("connecting to NRI socket")
+		d := net.Dialer{
+			Timeout: connectionTimeout,
+		}
+		conn, err := d.DialContext(context.Background(), "unix", h.socketPath)
+		if err != nil {
+			return err
+		}
+		_ = conn.Close()
+		return nil
+	}
+	return retry.Do(
+		tryConnect,
+		retry.Attempts(attempts),
+		retry.Delay(time.Second),
+		retry.DelayType(retry.BackOffDelay),
+		retry.OnRetry(func(n uint, err error) {
+			// n = 0 for the first retry
+			h.logger.Warn("error during NRI socket connection, retrying...",
+				"attempt", n+1,
+				"error", err,
+			)
+		}),
+	)
 }
 
 func (h *Handler) startNRIPlugin(ctx context.Context) error {
@@ -63,10 +100,8 @@ func (h *Handler) Start(ctx context.Context) error {
 	isRetryable := func(err error) bool {
 		// We stop in case of:
 		// - context.Canceled/DeadlineExceeded
-		// - unexisting socket
 		if errors.Is(err, context.Canceled) ||
-			errors.Is(err, context.DeadlineExceeded) ||
-			errors.Is(err, os.ErrNotExist) {
+			errors.Is(err, context.DeadlineExceeded) {
 			return false
 		}
 		return true
@@ -76,7 +111,7 @@ func (h *Handler) Start(ctx context.Context) error {
 		func() error {
 			return h.startNRIPlugin(ctx)
 		},
-		retry.Attempts(0),
+		retry.Attempts(0), // infinite attempts
 		retry.Delay(time.Second),
 		retry.DelayType(retry.BackOffDelay),
 		retry.MaxDelay(maxDelay),

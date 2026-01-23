@@ -125,13 +125,17 @@ func startAgent(ctx context.Context, logger *slog.Logger, config Config) error {
 		return fmt.Errorf("failed to create resolver: %w", err)
 	}
 
-	if config.enableNri {
-		nriHandler := nri.NewNRIHandler(
+	if config.enableNri { //nolint: nestif // it will go away when we remove the informer
+		var nriHandler *nri.Handler
+		nriHandler, err = nri.NewNRIHandler(
 			config.nriSocketPath,
 			config.nriPluginIdx,
 			logger,
 			resolver,
 		)
+		if err != nil {
+			return fmt.Errorf("failed to create NRI handler: %w", err)
+		}
 		if err = ctrlMgr.Add(nriHandler); err != nil {
 			return fmt.Errorf("failed to add NRI handler to controller manager: %w", err)
 		}
