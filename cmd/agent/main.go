@@ -10,6 +10,8 @@ import (
 	"github.com/neuvector/runtime-enforcer/internal/bpf"
 	"github.com/neuvector/runtime-enforcer/internal/eventhandler"
 	"github.com/neuvector/runtime-enforcer/internal/eventscraper"
+	"github.com/neuvector/runtime-enforcer/internal/nri"
+	"github.com/neuvector/runtime-enforcer/internal/podinformer"
 	"github.com/neuvector/runtime-enforcer/internal/resolver"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -109,41 +111,49 @@ func startAgent(ctx context.Context, logger *slog.Logger, config Config) error {
 	}
 
 	//////////////////////
-	// Create an informer for pods
-	//////////////////////
-	podInformer, err := ctrlMgr.GetCache().GetInformer(ctx, &corev1.Pod{})
-	if err != nil {
-		return fmt.Errorf("cannot get pod informer: %w", err)
-	}
-	// Add some indexes to the pod informer
-	// todo!: understand when we use them
-	err = podInformer.AddIndexers(cache.Indexers{
-		resolver.ContainerIdx: resolver.ContainerIndexFunc,
-		resolver.PodIdx:       resolver.PodIndexFunc,
-	})
-	if err != nil {
-		return fmt.Errorf("cannot add indexers to pod informer: %w", err)
-	}
-
-	//////////////////////
 	// Create the resolver
 	//////////////////////
 	resolver, err := resolver.NewResolver(
 		ctx,
 		logger,
-		podInformer,
 		bpfManager.GetCgroupTrackerUpdateFunc(),
 		bpfManager.GetCgroupPolicyUpdateFunc(),
 		bpfManager.GetPolicyUpdateBinariesFunc(),
 		bpfManager.GetPolicyModeUpdateFunc(),
-		resolver.NriSettings{
-			Enabled:        config.enableNri,
-			NriSocketPath:  config.nriSocketPath,
-			NriPluginIndex: config.nriPluginIdx,
-		},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create resolver: %w", err)
+	}
+
+	if config.enableNri { //nolint: nestif // it will go away when we remove the informer
+		var nriHandler *nri.Handler
+		nriHandler, err = nri.NewNRIHandler(
+			config.nriSocketPath,
+			config.nriPluginIdx,
+			logger,
+			resolver,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create NRI handler: %w", err)
+		}
+		if err = ctrlMgr.Add(nriHandler); err != nil {
+			return fmt.Errorf("failed to add NRI handler to controller manager: %w", err)
+		}
+	} else {
+		var podInf cmCache.Informer
+		podInf, err = ctrlMgr.GetCache().GetInformer(ctx, &corev1.Pod{})
+		if err != nil {
+			return fmt.Errorf("cannot get pod informer: %w", err)
+		}
+		// Add some indexes to the pod informer
+		err = podInf.AddIndexers(cache.Indexers{
+			podinformer.ContainerIdx: podinformer.ContainerIndexFunc,
+			podinformer.PodIdx:       podinformer.PodIndexFunc,
+		})
+		if err != nil {
+			return fmt.Errorf("cannot add indexers to pod informer: %w", err)
+		}
+		_, _ = podInf.AddEventHandler(podinformer.PodEventHandlers(logger.With("component", "pod-informer"), resolver))
 	}
 
 	//////////////////////
@@ -193,7 +203,7 @@ func main() {
 	flag.BoolVar(&config.enableTracing, "enable-tracing", false, "Enable tracing collection")
 	flag.BoolVar(&config.enableOtelSidecar, "enable-otel-sidecar", false, "Enable OpenTelemetry sidecar")
 	flag.BoolVar(&config.enableLearning, "enable-learning", false, "Enable learning mode")
-	flag.BoolVar(&config.enableNri, "enable-nri", false, "Enable NRI")
+	flag.BoolVar(&config.enableNri, "enable-nri", true, "Enable NRI")
 	flag.StringVar(&config.nriSocketPath, "nri-socket-path", "/var/run/nri/nri.sock", "NRI socket path")
 	flag.StringVar(&config.nriPluginIdx, "nri-plugin-index", "00", "NRI plugin index")
 

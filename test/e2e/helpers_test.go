@@ -11,8 +11,7 @@ func waitForWorkloadPolicyStatusToBeUpdated() {
 }
 
 func verifyUbuntuLearnedProcesses(values []string) bool {
-	// todo!: until we support the rthook we cannot detect `bash`, the resolution through containerd is slow.
-	// slices.Contains(values, "/usr/bin/bash")
-	return slices.Contains(values, "/usr/bin/ls") &&
+	return slices.Contains(values, "/usr/bin/bash") &&
+		slices.Contains(values, "/usr/bin/ls") &&
 		slices.Contains(values, "/usr/bin/sleep")
 }

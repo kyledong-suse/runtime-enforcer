@@ -3,6 +3,7 @@ module github.com/neuvector/runtime-enforcer
 go 1.25.6
 
 require (
+	github.com/avast/retry-go/v4 v4.7.0
 	github.com/cilium/ebpf v0.20.0
 	github.com/containerd/nri v0.11.0
 	github.com/go-logr/logr v1.4.3
