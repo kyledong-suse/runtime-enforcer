@@ -77,14 +77,10 @@ Follow these simple steps from your local machine to get Runtime-Enforcer up and
 
 === Install the Helm chart
 
-Follow these simple steps from your local machine to get Runtime-Enforcer up and running:
-
 ```bash
-git clone https://github.com/rancher-sandbox/runtime-enforcer.git
-
-cd runtime-enforcer
-
-helm install runtime-enforcer ./charts/runtime-enforcer \
+helm repo add runtime-enforcer https://rancher-sandbox.github.io/runtime-enforcer/
+helm repo update
+helm install runtime-enforcer runtime-enforcer/runtime-enforcer \
   --namespace runtime-enforcer \
   --create-namespace \
   --set operator.manager.image.tag=latest \
