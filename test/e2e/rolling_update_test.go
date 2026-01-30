@@ -22,7 +22,7 @@ import (
 	"sigs.k8s.io/e2e-framework/pkg/types"
 )
 
-// This test verifis the protection is persistent during rolling update of agent.
+// This test verifies the protection is persistent during rolling update of agent.
 func getRollingUpdateTest() types.Feature {
 	workloadNamespace := envconf.RandomName("workload-namespace", 32)
 
@@ -50,7 +50,7 @@ func getRollingUpdateTest() types.Feature {
 				Spec: v1alpha1.WorkloadPolicySpec{
 					Mode: "protect",
 					RulesByContainer: map[string]*v1alpha1.WorkloadPolicyRules{
-						"ubuntu": &v1alpha1.WorkloadPolicyRules{
+						"ubuntu": {
 							Executables: v1alpha1.WorkloadPolicyExecutables{
 								Allowed: []string{
 									"/usr/bin/bash",

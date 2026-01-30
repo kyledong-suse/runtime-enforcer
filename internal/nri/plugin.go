@@ -12,10 +12,9 @@ import (
 )
 
 type plugin struct {
-	stub         stub.Stub
-	logger       *slog.Logger
-	resolver     *resolver.Resolver
-	synchronized *bool
+	stub     stub.Stub
+	logger   *slog.Logger
+	resolver *resolver.Resolver
 }
 
 func (p *plugin) getWorkloadInfoAndLog(ctx context.Context, pod *api.PodSandbox) (string, workloadkind.Kind) {
@@ -94,9 +93,8 @@ func (p *plugin) Synchronize(
 				"error", err)
 		}
 	}
-	if p.synchronized != nil {
-		*p.synchronized = true
-	}
+	// Mark resolver as synchronized, so old agent can be safely removed.
+	p.resolver.NRISynchronized()
 	return nil, nil
 }
 

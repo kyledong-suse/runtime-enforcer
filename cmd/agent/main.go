@@ -124,8 +124,10 @@ func startAgent(ctx context.Context, logger *slog.Logger, config Config) error {
 		return fmt.Errorf("failed to add NRI handler to controller manager: %w", err)
 	}
 
-	if err = ctrlMgr.AddReadyzCheck("NRI readyz", nriHandler.Ping); err != nil {
-		return fmt.Errorf("failed to add NRI handler's readiness probe: %w", err)
+	// controller-runtime doesn't support a separate startup probe, so we use the readiness probe instead.
+	// See https://github.com/kubernetes-sigs/controller-runtime/issues/2644 for more details.
+	if err = ctrlMgr.AddReadyzCheck("resolver readyz", resolver.Ping); err != nil {
+		return fmt.Errorf("failed to add resolver's readiness probe: %w", err)
 	}
 
 	//////////////////////
@@ -155,6 +157,9 @@ func startAgent(ctx context.Context, logger *slog.Logger, config Config) error {
 	}
 
 	if err = ctrlMgr.AddReadyzCheck("policy readyz", func(_ *http.Request) error {
+		// Instead of informer.HasSynced(), which checks if the internal storage is synced,
+		// we use ResourceEventHandlerRegistration.HasSynced() to ensure that
+		// the event handlers have been synced.
 		if !handlerRegistration.HasSynced() {
 			logger.Warn("workload policy informer has not yet synced")
 			return errors.New("workload policy informer has not yet synced")
