@@ -23,3 +23,22 @@ tests:
           path: "spec.template.spec.containers[0].imagePullPolicy"
           value: "Always"
 
+  - it: "should include grpc Port argument"
+    set:
+      agent:
+        agent:
+          grpcExporterPort: "12"
+    asserts:
+      - contains:
+          path: "spec.template.spec.containers[0].args"
+          content: "--wp-status-reconciler-agent-grpc-port=12"
+
+  - it: "should set update interval argument"
+    set:
+      operator:
+        manager:
+          wpStatusUpdateInterval: "1s"
+    asserts:
+      - contains:
+          path: "spec.template.spec.containers[0].args"
+          content: "--wp-status-reconciler-update-interval=1s"

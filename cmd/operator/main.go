@@ -40,6 +40,7 @@ type Config struct {
 	secureMetrics                                    bool
 	enableHTTP2                                      bool
 	tlsOpts                                          []func(*tls.Config)
+	wpStatusSyncConfig                               controller.WorkloadPolicyStatusSyncConfig
 }
 
 func parseArgs(logger logr.Logger, config *Config) {
@@ -62,6 +63,22 @@ func parseArgs(logger logr.Logger, config *Config) {
 	flag.StringVar(&config.metricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
 	flag.BoolVar(&config.enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.IntVar(&config.wpStatusSyncConfig.AgentGRPCPort,
+		"wp-status-reconciler-agent-grpc-port",
+		0,
+		"The port the agent grpc server listens on.")
+	flag.DurationVar(&config.wpStatusSyncConfig.UpdateInterval,
+		"wp-status-reconciler-update-interval",
+		0,
+		"The interval at which the workload policy status reconciler updates the status of WorkloadPolicy resources.")
+	flag.StringVar(&config.wpStatusSyncConfig.AgentNamespace,
+		"wp-status-reconciler-agent-namespace",
+		"",
+		"The namespace where the agent pods are deployed.")
+	flag.StringVar(&config.wpStatusSyncConfig.AgentLabelSelector,
+		"wp-status-reconciler-agent-label-selector",
+		"",
+		"The label selector for the agent pods as a comma concatenated string.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -90,8 +107,19 @@ func SetupControllers(logger logr.Logger,
 	mgr manager.Manager,
 	metricsCertWatcher *certwatcher.CertWatcher,
 	webhookCertWatcher *certwatcher.CertWatcher,
+	wpStatusSyncConf *controller.WorkloadPolicyStatusSyncConfig,
 ) error {
 	var err error
+
+	logger.Info("Setting up WorkloadPolicyStatusSync with",
+		"config", wpStatusSyncConf)
+	var wpStatusSync *controller.WorkloadPolicyStatusSync
+	if wpStatusSync, err = controller.NewWorkloadPolicyStatusSync(mgr.GetClient(), wpStatusSyncConf); err != nil {
+		return fmt.Errorf("unable to create WorkloadPolicyStatusSync: %w", err)
+	}
+	if err = mgr.Add(wpStatusSync); err != nil {
+		return fmt.Errorf("failed to add WorkloadPolicyStatusSync to controller: %w", err)
+	}
 
 	if err = (&controller.WorkloadPolicyReconciler{
 		Client: mgr.GetClient(),
@@ -247,7 +275,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = SetupControllers(setupLog, mgr, metricsCertWatcher, webhookCertWatcher); err != nil {
+	if err = SetupControllers(setupLog, mgr, metricsCertWatcher, webhookCertWatcher, &config.wpStatusSyncConfig); err != nil {
 		setupLog.Error(err, "unable to setup controllers")
 		os.Exit(1)
 	}

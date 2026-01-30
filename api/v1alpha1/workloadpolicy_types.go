@@ -1,6 +1,8 @@
 package v1alpha1
 
 import (
+	"sort"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -88,6 +90,20 @@ func (s *WorkloadPolicyStatus) AddNodeIssue(nodeName string, issue NodeIssue) {
 			Message: "Maximum number of nodes with issues reached",
 		}
 	}
+}
+
+func (s *WorkloadPolicyStatus) SortTransitioningNodes() {
+	if len(s.NodesTransitioning) == 0 {
+		return
+	}
+
+	// we sort the transitioning nodes because we don't want to trigger
+	// updates on the WP if only the order of transitioning nodes has changed.
+	// Note: since this list is truncated it is still possible we trigger some updates if
+	// the number of transitioning nodes is greater than MaxTransitioningNodes.
+	sort.Slice(s.NodesTransitioning, func(i, j int) bool {
+		return s.NodesTransitioning[i] < s.NodesTransitioning[j]
+	})
 }
 
 func (s *WorkloadPolicyStatus) AddTransitioningNode(nodeName string) {
