@@ -82,6 +82,7 @@ local_resource(
         "cmd/operator",
         "api",
         "internal/controller",
+        "proto",
     ],
 )
 
@@ -119,7 +120,8 @@ local_resource(
         "api",
         "internal",
         "pkg",
-        "bpf"
+        "bpf",
+        "proto",
     ],
     ignore = exclusions,
 )
