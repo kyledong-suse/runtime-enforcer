@@ -12,6 +12,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	c1 = "c1"
+	c2 = "c2"
+	c3 = "c3"
+)
+
 func mockPolicyUpdateBinariesFunc(_ PolicyID, _ []string, _ bpf.PolicyValuesOperation) error {
 	return nil
 }
@@ -59,8 +65,8 @@ func TestHandleWP_Lifecycle(t *testing.T) {
 		Spec: v1alpha1.WorkloadPolicySpec{
 			Mode: "monitor",
 			RulesByContainer: map[string]*v1alpha1.WorkloadPolicyRules{
-				"c1": {Executables: v1alpha1.WorkloadPolicyExecutables{Allowed: []string{"/bin/sleep"}}},
-				"c2": {Executables: v1alpha1.WorkloadPolicyExecutables{Allowed: []string{"/bin/cat"}}},
+				c1: {Executables: v1alpha1.WorkloadPolicyExecutables{Allowed: []string{"/bin/sleep"}}},
+				c2: {Executables: v1alpha1.WorkloadPolicyExecutables{Allowed: []string{"/bin/cat"}}},
 			},
 		},
 	}
@@ -71,8 +77,8 @@ func TestHandleWP_Lifecycle(t *testing.T) {
 	require.Contains(t, r.wpState, key)
 	state := r.wpState[key]
 	require.Len(t, state, 2)
-	require.Contains(t, state, "c1")
-	require.Contains(t, state, "c2")
+	require.Contains(t, state, c1)
+	require.Contains(t, state, c2)
 	ids := make(map[PolicyID]struct{})
 	for _, id := range state {
 		ids[id] = struct{}{}
@@ -81,19 +87,19 @@ func TestHandleWP_Lifecycle(t *testing.T) {
 	initialState := r.wpState[key]
 
 	// Update: remove c1, update c2 allowed list, add c3
-	delete(wp.Spec.RulesByContainer, "c1")
-	wp.Spec.RulesByContainer["c2"] = &v1alpha1.WorkloadPolicyRules{
+	delete(wp.Spec.RulesByContainer, c1)
+	wp.Spec.RulesByContainer[c2] = &v1alpha1.WorkloadPolicyRules{
 		Executables: v1alpha1.WorkloadPolicyExecutables{Allowed: []string{"/bin/cat", "/bin/echo"}},
 	}
-	wp.Spec.RulesByContainer["c3"] = &v1alpha1.WorkloadPolicyRules{
+	wp.Spec.RulesByContainer[c3] = &v1alpha1.WorkloadPolicyRules{
 		Executables: v1alpha1.WorkloadPolicyExecutables{Allowed: []string{"/bin/ls"}},
 	}
 	require.NoError(t, r.handleWPUpdate(wp))
 	state = r.wpState[key]
 	require.Len(t, state, 2)
-	require.NotContains(t, state, "c1")
-	require.Equal(t, initialState["c2"], state["c2"], "c2 keeps its policy ID")
-	require.Equal(t, PolicyID(3), state["c3"])
+	require.NotContains(t, state, c1)
+	require.Equal(t, initialState[c2], state[c2], "c2 keeps its policy ID")
+	require.Equal(t, PolicyID(3), state[c3])
 
 	// Delete
 	require.NoError(t, r.handleWPDelete(wp))

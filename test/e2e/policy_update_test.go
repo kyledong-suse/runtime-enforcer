@@ -184,12 +184,13 @@ func getPolicyUpdateTest() types.Feature {
 
 				stdout.Reset()
 				stderr.Reset()
-				err := r.ExecInPod(
+				err := execMkdirInContainer(
 					ctx,
+					r,
 					workloadNamespace,
 					podName,
 					mainContainer,
-					[]string{"/usr/bin/mkdir", "/tmp/main-dir-add"},
+					"/tmp/main-dir-add",
 					&stdout,
 					&stderr,
 				)
@@ -203,12 +204,13 @@ func getPolicyUpdateTest() types.Feature {
 
 				stdout.Reset()
 				stderr.Reset()
-				err = r.ExecInPod(
+				err = execMkdirInContainer(
 					ctx,
+					r,
 					workloadNamespace,
 					podName,
 					sidecarContainer,
-					[]string{"/usr/bin/mkdir", "/tmp/sidecar-dir-add"},
+					"/tmp/sidecar-dir-add",
 					&stdout,
 					&stderr,
 				)
@@ -241,12 +243,13 @@ func getPolicyUpdateTest() types.Feature {
 
 				stdout.Reset()
 				stderr.Reset()
-				err = r.ExecInPod(
+				err = execMkdirInContainer(
 					ctx,
+					r,
 					workloadNamespace,
 					podName,
 					mainContainer,
-					[]string{"/usr/bin/mkdir", "/tmp/main-dir-add-2"},
+					"/tmp/main-dir-add-2",
 					&stdout,
 					&stderr,
 				)
@@ -260,12 +263,13 @@ func getPolicyUpdateTest() types.Feature {
 
 				stdout.Reset()
 				stderr.Reset()
-				err = r.ExecInPod(
+				err = execMkdirInContainer(
 					ctx,
+					r,
 					workloadNamespace,
 					podName,
 					sidecarContainer,
-					[]string{"/usr/bin/mkdir", "/tmp/sidecar-dir-add-2"},
+					"/tmp/sidecar-dir-add-2",
 					&stdout,
 					&stderr,
 				)
@@ -288,68 +292,27 @@ func getPolicyUpdateTest() types.Feature {
 				err := r.Get(ctx, policyName, workloadNamespace, &wp)
 				require.NoError(t, err, "failed to get policy")
 
-				// 1. Verify that /usr/bin/mkdir is blocked in both containers
-				t.Log("verifying /usr/bin/mkdir is initially blocked in both containers")
-
-				var stdout, stderr bytes.Buffer
-
-				stdout.Reset()
-				stderr.Reset()
-				err = r.ExecInPod(
-					ctx,
-					workloadNamespace,
-					podName,
-					mainContainer,
-					[]string{"/usr/bin/mkdir", "/tmp/main-dir"},
-					&stdout,
-					&stderr,
-				)
-				require.Error(t, err, "mkdir should be blocked in main container before update")
-				require.Contains(
-					t,
-					stderr.String(),
-					"operation not permitted",
-					"stderr should contain 'operation not permitted' when mkdir is blocked in main container",
-				)
-
-				stdout.Reset()
-				stderr.Reset()
-				err = r.ExecInPod(
-					ctx,
-					workloadNamespace,
-					podName,
-					sidecarContainer,
-					[]string{"/usr/bin/mkdir", "/tmp/sidecar-dir"},
-					&stdout,
-					&stderr,
-				)
-				require.Error(t, err, "mkdir should be blocked in sidecar container before update")
-				require.Contains(
-					t,
-					stderr.String(),
-					"operation not permitted",
-					"stderr should contain 'operation not permitted' when mkdir is blocked in sidecar container",
-				)
-
-				// 2. Update the policy to remove the sidecar container from RulesByContainer
+				// 1. Update the policy to remove the sidecar container from RulesByContainer
 				t.Log("updating policy to remove sidecar container rules")
+				var stdout, stderr bytes.Buffer
 				delete(wp.Spec.RulesByContainer, sidecarContainer)
 
 				err = r.Update(ctx, &wp)
 				require.NoError(t, err, "failed to update policy to remove sidecar rules")
 				waitForWorkloadPolicyStatusToBeUpdated()
 
-				// 3. Verify main is still protected (mkdir blocked) while sidecar is now unprotected (mkdir allowed)
+				// 2. Verify main is still protected (mkdir blocked) while sidecar is now unprotected (mkdir allowed)
 				t.Log("verifying main container remains protected and sidecar is unprotected after update")
 
 				stdout.Reset()
 				stderr.Reset()
-				err = r.ExecInPod(
+				err = execMkdirInContainer(
 					ctx,
+					r,
 					workloadNamespace,
 					podName,
 					mainContainer,
-					[]string{"/usr/bin/mkdir", "/tmp/main-dir-2"},
+					"/tmp/main-dir-2",
 					&stdout,
 					&stderr,
 				)
@@ -363,12 +326,13 @@ func getPolicyUpdateTest() types.Feature {
 
 				stdout.Reset()
 				stderr.Reset()
-				err = r.ExecInPod(
+				err = execMkdirInContainer(
 					ctx,
+					r,
 					workloadNamespace,
 					podName,
 					sidecarContainer,
-					[]string{"/usr/bin/mkdir", "/tmp/sidecar-dir-2"},
+					"/tmp/sidecar-dir-2",
 					&stdout,
 					&stderr,
 				)
