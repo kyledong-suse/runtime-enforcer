@@ -60,3 +60,18 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Grpc mTLS helpers
+*/}}
+{{- define "runtime-enforcer.grpc.CertDir" -}}
+/etc/runtime-enforcer/certs
+{{- end -}}
+
+{{- define "runtime-enforcer.grpc.agentSecretName" -}}
+{{ include "runtime-enforcer.fullname" . }}-agent-grpc-tls
+{{- end -}}
+
+{{- define "runtime-enforcer.grpc.operatorSecretName" -}}
+{{ include "runtime-enforcer.fullname" . }}-operator-grpc-tls
+{{- end -}}

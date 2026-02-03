@@ -3,8 +3,6 @@ package controller
 import (
 	"context"
 	"fmt"
-	"net"
-	"strconv"
 
 	"github.com/rancher-sandbox/runtime-enforcer/api/v1alpha1"
 	pb "github.com/rancher-sandbox/runtime-enforcer/proto/agent/v1"
@@ -44,7 +42,7 @@ func (r *WorkloadPolicyStatusSync) getPodPoliciesStatus(
 	// Check if we need to create a new connection or reuse an existing one
 	agentClient, ok := r.conns[pod.Spec.NodeName]
 	if !ok {
-		c, err := newAgentClient(net.JoinHostPort(pod.Status.PodIP, strconv.Itoa(r.agentGRPCPort)))
+		c, err := r.agentClientFactory.newClient(pod.Status.PodIP)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create connection to pod %s: %w", pod.Name, err)
 		}
@@ -54,6 +52,9 @@ func (r *WorkloadPolicyStatusSync) getPodPoliciesStatus(
 
 	resp, err := agentClient.listPoliciesStatus(ctx)
 	if err != nil {
+		// in case of error we close the connection and we will open a new one at the next sync
+		_ = agentClient.close()
+		delete(r.conns, pod.Spec.NodeName)
 		return nil, fmt.Errorf("failed to list policies status for pod %s: %w", pod.Name, err)
 	}
 	return resp, nil

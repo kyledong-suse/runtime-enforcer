@@ -59,6 +59,9 @@ agent:
       tag: v0.1.0
       pullPolicy: IfNotPresent
     grpcExporterPort: "50051"
+    grpc:
+      # When enabled, there will be mutual TLS (mTLS) between the agent server and the controller.
+      mTLS: true
     resources:
       limits:
         cpu: 500m

@@ -58,3 +58,43 @@ spec:
     name: {{ include "runtime-enforcer.fullname" . }}-ca
     kind: Issuer
     group: cert-manager.io
+{{- if or .Values.agent.agent.grpc.mTLS }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "runtime-enforcer.grpc.agentSecretName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "runtime-enforcer.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "runtime-enforcer.grpc.agentSecretName" . }}
+  dnsNames:
+    # We use a logical name for verification (operator uses this as TLS ServerName)
+    - "runtime-enforcer-agent"
+  duration: 2160h # 90 days
+  renewBefore: 240h # 10 days
+  issuerRef:
+    name: {{ include "runtime-enforcer.fullname" . }}-ca
+    kind: Issuer
+    group: cert-manager.io
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ include "runtime-enforcer.grpc.operatorSecretName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "runtime-enforcer.labels" . | nindent 4 }}
+spec:
+  secretName: {{ include "runtime-enforcer.grpc.operatorSecretName" . }}
+  commonName: runtime-enforcer-operator
+  duration: 2160h # 90 days
+  renewBefore: 240h # 10 days
+  usages:
+    - client auth
+  issuerRef:
+    name: {{ include "runtime-enforcer.fullname" . }}-ca
+    kind: Issuer
+    group: cert-manager.io
+{{- end }}

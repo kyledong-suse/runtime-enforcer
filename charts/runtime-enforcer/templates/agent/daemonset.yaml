@@ -35,6 +35,10 @@ spec:
         - --enable-learning
         {{- end }}
         - --grpc-port={{ .Values.agent.agent.grpcExporterPort }}
+        {{- if .Values.agent.agent.grpc.mTLS }}
+        - --grpc-mtls-enabled=true
+        - --grpc-mtls-cert-dir={{ include "runtime-enforcer.grpc.CertDir" . }}
+        {{- end }}
         {{- toYaml .Values.agent.agent.args | nindent 8 }}
         command:
         - /agent
@@ -78,6 +82,11 @@ spec:
           mountPath: /var/run/nri/nri.sock
           mountPropagation: HostToContainer
           readOnly: true
+        {{- if .Values.agent.agent.grpc.mTLS }}
+        - name: grpc-certs
+          mountPath: {{ include "runtime-enforcer.grpc.CertDir" . }}
+          readOnly: true
+        {{- end }}
       hostPID: {{ .Values.agent.hostPID }}
       securityContext: {{- toYaml .Values.agent.podSecurityContext | nindent 8 }}
       serviceAccountName: {{ include "runtime-enforcer.fullname" . }}-agent
@@ -86,3 +95,8 @@ spec:
       - name: nri-socket
         hostPath:
           path: {{ .Values.agent.nriSocketPath }}
+      {{- if .Values.agent.agent.grpc.mTLS }}
+      - name: grpc-certs
+        secret:
+          secretName: {{ include "runtime-enforcer.grpc.agentSecretName" . }}
+      {{- end }}

@@ -63,7 +63,7 @@ func parseArgs(logger logr.Logger, config *Config) {
 	flag.StringVar(&config.metricsCertKey, "metrics-cert-key", "tls.key", "The name of the metrics server key file.")
 	flag.BoolVar(&config.enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
-	flag.IntVar(&config.wpStatusSyncConfig.AgentGRPCPort,
+	flag.IntVar(&config.wpStatusSyncConfig.AgentGRPCConf.Port,
 		"wp-status-reconciler-agent-grpc-port",
 		0,
 		"The port the agent grpc server listens on.")
@@ -79,6 +79,14 @@ func parseArgs(logger logr.Logger, config *Config) {
 		"wp-status-reconciler-agent-label-selector",
 		"",
 		"The label selector for the agent pods as a comma concatenated string.")
+	flag.BoolVar(&config.wpStatusSyncConfig.AgentGRPCConf.MTLSEnabled,
+		"wp-status-reconciler-agent-grpc-mtls-enabled",
+		false,
+		"Enable mTLS when dialing the agent gRPC endpoint.")
+	flag.StringVar(&config.wpStatusSyncConfig.AgentGRPCConf.CertDirPath,
+		"wp-status-reconciler-agent-grpc-mtls-cert-dir",
+		"",
+		"Path to the directory containing the client and ca TLS certificate.")
 	opts := zap.Options{
 		Development: true,
 	}

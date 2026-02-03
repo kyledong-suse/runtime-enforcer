@@ -20,7 +20,10 @@ func createTestWPStatusSync(t *testing.T) *WorkloadPolicyStatusSync {
 	v1alpha1.AddToScheme(scheme)
 	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects().Build()
 	config := &WorkloadPolicyStatusSyncConfig{
-		AgentGRPCPort:      50051,
+		AgentGRPCConf: AgentGRPCConfig{
+			Port:        50051,
+			MTLSEnabled: false,
+		},
 		UpdateInterval:     1 * time.Second,
 		AgentNamespace:     "test-namespace",
 		AgentLabelSelector: "app=agent",

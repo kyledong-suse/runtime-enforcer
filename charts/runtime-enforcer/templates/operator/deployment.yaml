@@ -29,6 +29,10 @@ spec:
         - --wp-status-reconciler-update-interval={{ .Values.operator.manager.wpStatusUpdateInterval }}
         - --wp-status-reconciler-agent-namespace={{ .Release.Namespace }}
         - --wp-status-reconciler-agent-label-selector=app.kubernetes.io/component=agent
+        {{- if .Values.agent.agent.grpc.mTLS }}
+        - --wp-status-reconciler-agent-grpc-mtls-enabled=true
+        - --wp-status-reconciler-agent-grpc-mtls-cert-dir={{ include "runtime-enforcer.grpc.CertDir" . }}
+        {{- end }}
         {{- toYaml .Values.operator.manager.args | nindent 8 }}
         command:
         - /operator
@@ -59,10 +63,20 @@ spec:
           - mountPath: /tmp/k8s-webhook-server/serving-certs/
             name: webhook-certs
             readOnly: true
+          {{- if .Values.agent.agent.grpc.mTLS }}
+          - name: grpc-certs
+            mountPath: {{ include "runtime-enforcer.grpc.CertDir" . }}
+            readOnly: true
+          {{- end }}
       volumes:
         - name: webhook-certs
           secret:
             secretName: {{ include "runtime-enforcer.fullname" . }}-operator-webhook-tls
+        {{- if .Values.agent.agent.grpc.mTLS }}
+        - name: grpc-certs
+          secret:
+            secretName: {{ include "runtime-enforcer.grpc.operatorSecretName" . }}
+        {{- end }}
       securityContext: {{- toYaml .Values.operator.podSecurityContext | nindent
         8 }}
       serviceAccountName: {{ include "runtime-enforcer.fullname" . }}-controller-manager

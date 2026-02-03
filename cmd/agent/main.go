@@ -36,7 +36,7 @@ type Config struct {
 	nriSocketPath     string
 	nriPluginIdx      string
 	probeAddr         string
-	grpcPort          int
+	grpcConf          grpcexporter.Config
 }
 
 // +kubebuilder:rbac:groups=security.rancher.io,resources=workloadpolicies,verbs=get;list;watch
@@ -174,7 +174,11 @@ func startAgent(ctx context.Context, logger *slog.Logger, config Config) error {
 	//////////////////////
 	// Add GRPC exporter
 	//////////////////////
-	exporter := grpcexporter.New(logger, config.grpcPort, resolver)
+	exporter, err := grpcexporter.New(logger, &config.grpcConf, resolver)
+	if err != nil {
+		logger.ErrorContext(ctx, "failed to create gRPC exporter", "error", err)
+		return err
+	}
 	if err = ctrlMgr.Add(exporter); err != nil {
 		logger.ErrorContext(ctx, "failed to add gRPC exporter to controller manager", "error", err)
 	}
@@ -206,8 +210,11 @@ func main() {
 	flag.StringVar(&config.nriSocketPath, "nri-socket-path", "/var/run/nri/nri.sock", "NRI socket path")
 	flag.StringVar(&config.nriPluginIdx, "nri-plugin-index", "00", "NRI plugin index")
 	flag.StringVar(&config.probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
-	flag.IntVar(&config.grpcPort, "grpc-port", 50051, "gRPC server port")
-
+	flag.IntVar(&config.grpcConf.Port, "grpc-port", 50051, "gRPC server port")
+	flag.BoolVar(&config.grpcConf.MTLSEnabled, "grpc-mtls-enabled", false,
+		"Enable mutual TLS between the agent server and clients")
+	flag.StringVar(&config.grpcConf.CertDirPath, "grpc-mtls-cert-dir", "",
+		"Path to the directory containing the server and ca TLS certificate")
 	flag.Parse()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{

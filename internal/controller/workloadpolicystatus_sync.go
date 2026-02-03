@@ -34,16 +34,22 @@ type WorkloadPolicyStatusSync struct {
 	client.Client
 
 	conns              map[string]agentClientAPI
-	agentGRPCPort      int
+	agentClientFactory *agentClientFactory
 	updateInterval     time.Duration
 	agentNamespace     string
 	agentLabelSelector map[string]string
 	logger             logr.Logger
 }
 
+type AgentGRPCConfig struct {
+	MTLSEnabled bool
+	CertDirPath string
+	Port        int
+}
+
 // WorkloadPolicyStatusSyncConfig holds the configuration for the WorkloadPolicyStatusSync.
 type WorkloadPolicyStatusSyncConfig struct {
-	AgentGRPCPort      int
+	AgentGRPCConf      AgentGRPCConfig
 	UpdateInterval     time.Duration
 	AgentNamespace     string
 	AgentLabelSelector string
@@ -53,10 +59,6 @@ func NewWorkloadPolicyStatusSync(
 	c client.Client,
 	config *WorkloadPolicyStatusSyncConfig,
 ) (*WorkloadPolicyStatusSync, error) {
-	if config.AgentGRPCPort == 0 {
-		return nil, fmt.Errorf("invalid gRPC port: %d", config.AgentGRPCPort)
-	}
-
 	if config.UpdateInterval <= 0 {
 		return nil, fmt.Errorf("invalid update interval: %v", config.UpdateInterval)
 	}
@@ -77,10 +79,15 @@ func NewWorkloadPolicyStatusSync(
 		agentLabelSelector[strings.TrimSpace(parts[0])] = strings.TrimSpace(parts[1])
 	}
 
+	factory, err := newAgentClientFactory(&config.AgentGRPCConf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create agent client factory: %w", err)
+	}
+
 	return &WorkloadPolicyStatusSync{
 		Client:             c,
 		conns:              make(map[string]agentClientAPI),
-		agentGRPCPort:      config.AgentGRPCPort,
+		agentClientFactory: factory,
 		updateInterval:     config.UpdateInterval,
 		agentNamespace:     config.AgentNamespace,
 		agentLabelSelector: agentLabelSelector,
