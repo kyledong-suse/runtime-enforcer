@@ -24,9 +24,6 @@ const (
 	tlsCertFile = "tls.crt"
 	tlsKeyFile  = "tls.key"
 	caCertFile  = "ca.crt"
-
-	// the serverName should match one of the dnsNames in the agent's certificate.
-	serverNameServerCert = "runtime-enforcer-agent"
 )
 
 // agentClientFactory is responsible for creating agent clients.
@@ -71,7 +68,7 @@ func newAgentClientFactory(conf *AgentGRPCConfig) (*agentClientFactory, error) {
 	}, nil
 }
 
-func (f *agentClientFactory) getConnCredentials() (credentials.TransportCredentials, error) {
+func (f *agentClientFactory) getConnCredentials(podNamespacedName string) (credentials.TransportCredentials, error) {
 	if !f.mTLSEnabled {
 		return insecure.NewCredentials(), nil
 	}
@@ -94,14 +91,15 @@ func (f *agentClientFactory) getConnCredentials() (credentials.TransportCredenti
 	tlsConfig := &tls.Config{
 		Certificates: []tls.Certificate{clientCert},
 		RootCAs:      certPool,
-		MinVersion:   tls.VersionTLS12,
-		ServerName:   serverNameServerCert,
+		MinVersion:   tls.VersionTLS13,
+		// the service name in the server certificate will be in this form
+		ServerName: podNamespacedName,
 	}
 	return credentials.NewTLS(tlsConfig), nil
 }
 
-func (f *agentClientFactory) newClient(podIP string) (*agentClient, error) {
-	creds, err := f.getConnCredentials()
+func (f *agentClientFactory) newClient(podIP, podName, podNamespace string) (*agentClient, error) {
+	creds, err := f.getConnCredentials(fmt.Sprintf("%s.%s", podName, podNamespace))
 	if err != nil {
 		return nil, fmt.Errorf("failed to get connection credentials: %w", err)
 	}

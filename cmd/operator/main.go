@@ -81,7 +81,7 @@ func parseArgs(logger logr.Logger, config *Config) {
 		"The label selector for the agent pods as a comma concatenated string.")
 	flag.BoolVar(&config.wpStatusSyncConfig.AgentGRPCConf.MTLSEnabled,
 		"wp-status-reconciler-agent-grpc-mtls-enabled",
-		false,
+		true,
 		"Enable mTLS when dialing the agent gRPC endpoint.")
 	flag.StringVar(&config.wpStatusSyncConfig.AgentGRPCConf.CertDirPath,
 		"wp-status-reconciler-agent-grpc-mtls-cert-dir",

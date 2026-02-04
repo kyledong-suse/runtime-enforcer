@@ -49,7 +49,7 @@ func (s *Server) getConnCredentials() grpc.ServerOption {
 
 	tlsConfig := &tls.Config{
 		// gosec: wants the version specified also here
-		MinVersion: tls.VersionTLS12,
+		MinVersion: tls.VersionTLS13,
 
 		// GetConfigForClient called for each handshake, in this way we can handle certificate rotation.
 		// in the future we could add a cache to avoid reading files on each handshake but only when the file
@@ -79,7 +79,7 @@ func (s *Server) getConnCredentials() grpc.ServerOption {
 				Certificates: []tls.Certificate{cert},
 				ClientAuth:   tls.RequireAndVerifyClientCert,
 				ClientCAs:    certPool,
-				MinVersion:   tls.VersionTLS12,
+				MinVersion:   tls.VersionTLS13,
 			}, nil
 		},
 	}

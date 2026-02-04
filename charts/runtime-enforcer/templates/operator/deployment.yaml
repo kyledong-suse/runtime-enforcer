@@ -29,10 +29,7 @@ spec:
         - --wp-status-reconciler-update-interval={{ .Values.operator.manager.wpStatusUpdateInterval }}
         - --wp-status-reconciler-agent-namespace={{ .Release.Namespace }}
         - --wp-status-reconciler-agent-label-selector=app.kubernetes.io/component=agent
-        {{- if .Values.agent.agent.grpc.mTLS }}
-        - --wp-status-reconciler-agent-grpc-mtls-enabled=true
-        - --wp-status-reconciler-agent-grpc-mtls-cert-dir={{ include "runtime-enforcer.grpc.CertDir" . }}
-        {{- end }}
+        - --wp-status-reconciler-agent-grpc-mtls-cert-dir={{ include "runtime-enforcer.grpc.certDir" . }}
         {{- toYaml .Values.operator.manager.args | nindent 8 }}
         command:
         - /operator
@@ -63,20 +60,26 @@ spec:
           - mountPath: /tmp/k8s-webhook-server/serving-certs/
             name: webhook-certs
             readOnly: true
-          {{- if .Values.agent.agent.grpc.mTLS }}
           - name: grpc-certs
-            mountPath: {{ include "runtime-enforcer.grpc.CertDir" . }}
+            mountPath: {{ include "runtime-enforcer.grpc.certDir" . }}
             readOnly: true
-          {{- end }}
       volumes:
         - name: webhook-certs
-          secret:
-            secretName: {{ include "runtime-enforcer.fullname" . }}-operator-webhook-tls
-        {{- if .Values.agent.agent.grpc.mTLS }}
+          csi:
+            driver: "csi.cert-manager.io"
+            readOnly: true
+            volumeAttributes:
+              csi.cert-manager.io/issuer-name: {{ include "runtime-enforcer.caIssuerName" . }}
+              csi.cert-manager.io/issuer-kind: Issuer
+              csi.cert-manager.io/dns-names: {{ include "runtime-enforcer.fullname" . }}-mutating-webhook.{{ .Release.Namespace }}.svc
         - name: grpc-certs
-          secret:
-            secretName: {{ include "runtime-enforcer.grpc.operatorSecretName" . }}
-        {{- end }}
+          csi:
+            driver: "csi.cert-manager.io"
+            readOnly: true
+            volumeAttributes:
+              csi.cert-manager.io/issuer-name: {{ include "runtime-enforcer.caIssuerName" . }}
+              csi.cert-manager.io/issuer-kind: Issuer
+              csi.cert-manager.io/dns-names: "runtime-enforcer-operator"
       securityContext: {{- toYaml .Values.operator.podSecurityContext | nindent
         8 }}
       serviceAccountName: {{ include "runtime-enforcer.fullname" . }}-controller-manager

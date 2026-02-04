@@ -35,10 +35,7 @@ spec:
         - --enable-learning
         {{- end }}
         - --grpc-port={{ .Values.agent.agent.grpcExporterPort }}
-        {{- if .Values.agent.agent.grpc.mTLS }}
-        - --grpc-mtls-enabled=true
-        - --grpc-mtls-cert-dir={{ include "runtime-enforcer.grpc.CertDir" . }}
-        {{- end }}
+        - --grpc-mtls-cert-dir={{ include "runtime-enforcer.grpc.certDir" . }}
         {{- toYaml .Values.agent.agent.args | nindent 8 }}
         command:
         - /agent
@@ -82,11 +79,9 @@ spec:
           mountPath: /var/run/nri/nri.sock
           mountPropagation: HostToContainer
           readOnly: true
-        {{- if .Values.agent.agent.grpc.mTLS }}
         - name: grpc-certs
-          mountPath: {{ include "runtime-enforcer.grpc.CertDir" . }}
+          mountPath: {{ include "runtime-enforcer.grpc.certDir" . }}
           readOnly: true
-        {{- end }}
       hostPID: {{ .Values.agent.hostPID }}
       securityContext: {{- toYaml .Values.agent.podSecurityContext | nindent 8 }}
       serviceAccountName: {{ include "runtime-enforcer.fullname" . }}-agent
@@ -95,8 +90,11 @@ spec:
       - name: nri-socket
         hostPath:
           path: {{ .Values.agent.nriSocketPath }}
-      {{- if .Values.agent.agent.grpc.mTLS }}
       - name: grpc-certs
-        secret:
-          secretName: {{ include "runtime-enforcer.grpc.agentSecretName" . }}
-      {{- end }}
+        csi:
+          driver: "csi.cert-manager.io"
+          readOnly: true
+          volumeAttributes:
+            csi.cert-manager.io/issuer-name: {{ include "runtime-enforcer.caIssuerName" . }}
+            csi.cert-manager.io/issuer-kind: Issuer
+            csi.cert-manager.io/dns-names: ${POD_NAME}.${POD_NAMESPACE}

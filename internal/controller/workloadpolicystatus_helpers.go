@@ -42,7 +42,7 @@ func (r *WorkloadPolicyStatusSync) getPodPoliciesStatus(
 	// Check if we need to create a new connection or reuse an existing one
 	agentClient, ok := r.conns[pod.Spec.NodeName]
 	if !ok {
-		c, err := r.agentClientFactory.newClient(pod.Status.PodIP)
+		c, err := r.agentClientFactory.newClient(pod.Status.PodIP, pod.Name, pod.Namespace)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create connection to pod %s: %w", pod.Name, err)
 		}

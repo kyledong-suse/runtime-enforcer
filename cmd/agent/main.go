@@ -222,7 +222,7 @@ func main() {
 	flag.StringVar(&config.nriPluginIdx, "nri-plugin-index", "00", "NRI plugin index")
 	flag.StringVar(&config.probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.IntVar(&config.grpcConf.Port, "grpc-port", 50051, "gRPC server port")
-	flag.BoolVar(&config.grpcConf.MTLSEnabled, "grpc-mtls-enabled", false,
+	flag.BoolVar(&config.grpcConf.MTLSEnabled, "grpc-mtls-enabled", true,
 		"Enable mutual TLS between the agent server and clients")
 	flag.StringVar(&config.grpcConf.CertDirPath, "grpc-mtls-cert-dir", "",
 		"Path to the directory containing the server and ca TLS certificate")

@@ -62,16 +62,11 @@ Create the name of the service account to use
 {{- end }}
 
 {{/*
-Grpc mTLS helpers
+Certificates helpers
 */}}
-{{- define "runtime-enforcer.grpc.CertDir" -}}
+{{- define "runtime-enforcer.grpc.certDir" -}}
 /etc/runtime-enforcer/certs
 {{- end -}}
-
-{{- define "runtime-enforcer.grpc.agentSecretName" -}}
-{{ include "runtime-enforcer.fullname" . }}-agent-grpc-tls
-{{- end -}}
-
-{{- define "runtime-enforcer.grpc.operatorSecretName" -}}
-{{ include "runtime-enforcer.fullname" . }}-operator-grpc-tls
+{{- define "runtime-enforcer.caIssuerName" -}}
+{{ include "runtime-enforcer.fullname" . }}-ca
 {{- end -}}

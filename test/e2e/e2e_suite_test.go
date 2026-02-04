@@ -23,8 +23,9 @@ var (
 )
 
 const (
-	certManagerVersion = "v1.18.2"
-	otelVersion        = "v0.136.0"
+	certManagerVersion          = "v1.18.2"
+	otelVersion                 = "v0.136.0"
+	certManagerCSIDriverVersion = "v0.12.0"
 )
 
 func TestMain(m *testing.M) {
@@ -87,6 +88,18 @@ func InstallCertManager() env.Func {
 			helm.WithTimeout(DefaultHelmTimeout.String()))
 		if err != nil {
 			return ctx, fmt.Errorf("failed to install cert manager: %w", err)
+		}
+
+		// Install cert-manager CSI driver
+		err = manager.RunInstall(
+			helm.WithName("cert-manager-csi-driver"),
+			helm.WithChart(certManagerNamespace+"/cert-manager-csi-driver"),
+			helm.WithNamespace("cert-manager"),
+			helm.WithArgs("--version", certManagerCSIDriverVersion),
+			helm.WithWait(),
+			helm.WithTimeout(DefaultHelmTimeout.String()))
+		if err != nil {
+			return ctx, fmt.Errorf("failed to install cert manager CSI driver: %w", err)
 		}
 
 		return ctx, nil
