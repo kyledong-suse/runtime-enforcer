@@ -9,6 +9,7 @@ package agentv1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -542,11 +543,191 @@ func (x *ListPoliciesStatusResponse) GetPolicies() map[string]*PolicyStatus {
 	return nil
 }
 
+type ScrapeViolationsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ScrapeViolationsRequest) Reset() {
+	*x = ScrapeViolationsRequest{}
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ScrapeViolationsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ScrapeViolationsRequest) ProtoMessage() {}
+
+func (x *ScrapeViolationsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ScrapeViolationsRequest.ProtoReflect.Descriptor instead.
+func (*ScrapeViolationsRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_v1_agent_proto_rawDescGZIP(), []int{8}
+}
+
+type ViolationRecord struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Timestamp      *timestamppb.Timestamp `protobuf:"bytes,1,opt,name=timestamp,proto3" json:"timestamp,omitempty"`
+	PodName        string                 `protobuf:"bytes,2,opt,name=pod_name,json=podName,proto3" json:"pod_name,omitempty"`
+	ContainerName  string                 `protobuf:"bytes,3,opt,name=container_name,json=containerName,proto3" json:"container_name,omitempty"`
+	ExecutablePath string                 `protobuf:"bytes,4,opt,name=executable_path,json=executablePath,proto3" json:"executable_path,omitempty"`
+	NodeName       string                 `protobuf:"bytes,5,opt,name=node_name,json=nodeName,proto3" json:"node_name,omitempty"`
+	Action         string                 `protobuf:"bytes,6,opt,name=action,proto3" json:"action,omitempty"`
+	PolicyName     string                 `protobuf:"bytes,7,opt,name=policy_name,json=policyName,proto3" json:"policy_name,omitempty"`
+	Count          uint32                 `protobuf:"varint,8,opt,name=count,proto3" json:"count,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *ViolationRecord) Reset() {
+	*x = ViolationRecord{}
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ViolationRecord) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ViolationRecord) ProtoMessage() {}
+
+func (x *ViolationRecord) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ViolationRecord.ProtoReflect.Descriptor instead.
+func (*ViolationRecord) Descriptor() ([]byte, []int) {
+	return file_proto_agent_v1_agent_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *ViolationRecord) GetTimestamp() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Timestamp
+	}
+	return nil
+}
+
+func (x *ViolationRecord) GetPodName() string {
+	if x != nil {
+		return x.PodName
+	}
+	return ""
+}
+
+func (x *ViolationRecord) GetContainerName() string {
+	if x != nil {
+		return x.ContainerName
+	}
+	return ""
+}
+
+func (x *ViolationRecord) GetExecutablePath() string {
+	if x != nil {
+		return x.ExecutablePath
+	}
+	return ""
+}
+
+func (x *ViolationRecord) GetNodeName() string {
+	if x != nil {
+		return x.NodeName
+	}
+	return ""
+}
+
+func (x *ViolationRecord) GetAction() string {
+	if x != nil {
+		return x.Action
+	}
+	return ""
+}
+
+func (x *ViolationRecord) GetPolicyName() string {
+	if x != nil {
+		return x.PolicyName
+	}
+	return ""
+}
+
+func (x *ViolationRecord) GetCount() uint32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+type ScrapeViolationsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Violations    []*ViolationRecord     `protobuf:"bytes,1,rep,name=violations,proto3" json:"violations,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ScrapeViolationsResponse) Reset() {
+	*x = ScrapeViolationsResponse{}
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ScrapeViolationsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ScrapeViolationsResponse) ProtoMessage() {}
+
+func (x *ScrapeViolationsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ScrapeViolationsResponse.ProtoReflect.Descriptor instead.
+func (*ScrapeViolationsResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_v1_agent_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *ScrapeViolationsResponse) GetViolations() []*ViolationRecord {
+	if x != nil {
+		return x.Violations
+	}
+	return nil
+}
+
 var File_proto_agent_v1_agent_proto protoreflect.FileDescriptor
 
 const file_proto_agent_v1_agent_proto_rawDesc = "" +
 	"\n" +
-	"\x1aproto/agent/v1/agent.proto\x12\x18runtimeenforcer.agent.v1\"O\n" +
+	"\x1aproto/agent/v1/agent.proto\x12\x18runtimeenforcer.agent.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"O\n" +
 	"\rContainerMeta\x12\x0e\n" +
 	"\x02ID\x18\x01 \x01(\tR\x02ID\x12\x12\n" +
 	"\x04Name\x18\x02 \x01(\tR\x04Name\x12\x1a\n" +
@@ -581,7 +762,22 @@ const file_proto_agent_v1_agent_proto_rawDesc = "" +
 	"\bpolicies\x18\x01 \x03(\v2B.runtimeenforcer.agent.v1.ListPoliciesStatusResponse.PoliciesEntryR\bpolicies\x1ac\n" +
 	"\rPoliciesEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12<\n" +
-	"\x05value\x18\x02 \x01(\v2&.runtimeenforcer.agent.v1.PolicyStatusR\x05value:\x028\x01*[\n" +
+	"\x05value\x18\x02 \x01(\v2&.runtimeenforcer.agent.v1.PolicyStatusR\x05value:\x028\x01\"\x19\n" +
+	"\x17ScrapeViolationsRequest\"\xa2\x02\n" +
+	"\x0fViolationRecord\x128\n" +
+	"\ttimestamp\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\ttimestamp\x12\x19\n" +
+	"\bpod_name\x18\x02 \x01(\tR\apodName\x12%\n" +
+	"\x0econtainer_name\x18\x03 \x01(\tR\rcontainerName\x12'\n" +
+	"\x0fexecutable_path\x18\x04 \x01(\tR\x0eexecutablePath\x12\x1b\n" +
+	"\tnode_name\x18\x05 \x01(\tR\bnodeName\x12\x16\n" +
+	"\x06action\x18\x06 \x01(\tR\x06action\x12\x1f\n" +
+	"\vpolicy_name\x18\a \x01(\tR\n" +
+	"policyName\x12\x14\n" +
+	"\x05count\x18\b \x01(\rR\x05count\"e\n" +
+	"\x18ScrapeViolationsResponse\x12I\n" +
+	"\n" +
+	"violations\x18\x01 \x03(\v2).runtimeenforcer.agent.v1.ViolationRecordR\n" +
+	"violations*[\n" +
 	"\vPolicyState\x12\x1c\n" +
 	"\x18POLICY_STATE_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12POLICY_STATE_READY\x10\x01\x12\x16\n" +
@@ -590,10 +786,11 @@ const file_proto_agent_v1_agent_proto_rawDesc = "" +
 	"PolicyMode\x12\x1b\n" +
 	"\x17POLICY_MODE_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13POLICY_MODE_MONITOR\x10\x01\x12\x17\n" +
-	"\x13POLICY_MODE_PROTECT\x10\x022\x84\x02\n" +
+	"\x13POLICY_MODE_PROTECT\x10\x022\x81\x03\n" +
 	"\rAgentObserver\x12\x81\x01\n" +
 	"\x12ListPoliciesStatus\x123.runtimeenforcer.agent.v1.ListPoliciesStatusRequest\x1a4.runtimeenforcer.agent.v1.ListPoliciesStatusResponse\"\x00\x12o\n" +
-	"\fListPodCache\x12-.runtimeenforcer.agent.v1.ListPodCacheRequest\x1a..runtimeenforcer.agent.v1.ListPodCacheResponse\"\x00B>Z<github.com/neuvector/runtime-enforcer/proto/agent/v1;agentv1b\x06proto3"
+	"\fListPodCache\x12-.runtimeenforcer.agent.v1.ListPodCacheRequest\x1a..runtimeenforcer.agent.v1.ListPodCacheResponse\"\x00\x12{\n" +
+	"\x10ScrapeViolations\x121.runtimeenforcer.agent.v1.ScrapeViolationsRequest\x1a2.runtimeenforcer.agent.v1.ScrapeViolationsResponse\"\x00B>Z<github.com/neuvector/runtime-enforcer/proto/agent/v1;agentv1b\x06proto3"
 
 var (
 	file_proto_agent_v1_agent_proto_rawDescOnce sync.Once
@@ -608,7 +805,7 @@ func file_proto_agent_v1_agent_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_agent_v1_agent_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_proto_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
+var file_proto_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_proto_agent_v1_agent_proto_goTypes = []any{
 	(PolicyState)(0),                   // 0: runtimeenforcer.agent.v1.PolicyState
 	(PolicyMode)(0),                    // 1: runtimeenforcer.agent.v1.PolicyMode
@@ -620,29 +817,37 @@ var file_proto_agent_v1_agent_proto_goTypes = []any{
 	(*ListPoliciesStatusRequest)(nil),  // 7: runtimeenforcer.agent.v1.ListPoliciesStatusRequest
 	(*PolicyStatus)(nil),               // 8: runtimeenforcer.agent.v1.PolicyStatus
 	(*ListPoliciesStatusResponse)(nil), // 9: runtimeenforcer.agent.v1.ListPoliciesStatusResponse
-	nil,                                // 10: runtimeenforcer.agent.v1.PodMeta.LabelsEntry
-	nil,                                // 11: runtimeenforcer.agent.v1.PodView.ContainersEntry
-	nil,                                // 12: runtimeenforcer.agent.v1.ListPoliciesStatusResponse.PoliciesEntry
+	(*ScrapeViolationsRequest)(nil),    // 10: runtimeenforcer.agent.v1.ScrapeViolationsRequest
+	(*ViolationRecord)(nil),            // 11: runtimeenforcer.agent.v1.ViolationRecord
+	(*ScrapeViolationsResponse)(nil),   // 12: runtimeenforcer.agent.v1.ScrapeViolationsResponse
+	nil,                                // 13: runtimeenforcer.agent.v1.PodMeta.LabelsEntry
+	nil,                                // 14: runtimeenforcer.agent.v1.PodView.ContainersEntry
+	nil,                                // 15: runtimeenforcer.agent.v1.ListPoliciesStatusResponse.PoliciesEntry
+	(*timestamppb.Timestamp)(nil),      // 16: google.protobuf.Timestamp
 }
 var file_proto_agent_v1_agent_proto_depIdxs = []int32{
-	10, // 0: runtimeenforcer.agent.v1.PodMeta.Labels:type_name -> runtimeenforcer.agent.v1.PodMeta.LabelsEntry
+	13, // 0: runtimeenforcer.agent.v1.PodMeta.Labels:type_name -> runtimeenforcer.agent.v1.PodMeta.LabelsEntry
 	3,  // 1: runtimeenforcer.agent.v1.PodView.meta:type_name -> runtimeenforcer.agent.v1.PodMeta
-	11, // 2: runtimeenforcer.agent.v1.PodView.containers:type_name -> runtimeenforcer.agent.v1.PodView.ContainersEntry
+	14, // 2: runtimeenforcer.agent.v1.PodView.containers:type_name -> runtimeenforcer.agent.v1.PodView.ContainersEntry
 	4,  // 3: runtimeenforcer.agent.v1.ListPodCacheResponse.pods:type_name -> runtimeenforcer.agent.v1.PodView
 	0,  // 4: runtimeenforcer.agent.v1.PolicyStatus.state:type_name -> runtimeenforcer.agent.v1.PolicyState
 	1,  // 5: runtimeenforcer.agent.v1.PolicyStatus.mode:type_name -> runtimeenforcer.agent.v1.PolicyMode
-	12, // 6: runtimeenforcer.agent.v1.ListPoliciesStatusResponse.policies:type_name -> runtimeenforcer.agent.v1.ListPoliciesStatusResponse.PoliciesEntry
-	2,  // 7: runtimeenforcer.agent.v1.PodView.ContainersEntry.value:type_name -> runtimeenforcer.agent.v1.ContainerMeta
-	8,  // 8: runtimeenforcer.agent.v1.ListPoliciesStatusResponse.PoliciesEntry.value:type_name -> runtimeenforcer.agent.v1.PolicyStatus
-	7,  // 9: runtimeenforcer.agent.v1.AgentObserver.ListPoliciesStatus:input_type -> runtimeenforcer.agent.v1.ListPoliciesStatusRequest
-	5,  // 10: runtimeenforcer.agent.v1.AgentObserver.ListPodCache:input_type -> runtimeenforcer.agent.v1.ListPodCacheRequest
-	9,  // 11: runtimeenforcer.agent.v1.AgentObserver.ListPoliciesStatus:output_type -> runtimeenforcer.agent.v1.ListPoliciesStatusResponse
-	6,  // 12: runtimeenforcer.agent.v1.AgentObserver.ListPodCache:output_type -> runtimeenforcer.agent.v1.ListPodCacheResponse
-	11, // [11:13] is the sub-list for method output_type
-	9,  // [9:11] is the sub-list for method input_type
-	9,  // [9:9] is the sub-list for extension type_name
-	9,  // [9:9] is the sub-list for extension extendee
-	0,  // [0:9] is the sub-list for field type_name
+	15, // 6: runtimeenforcer.agent.v1.ListPoliciesStatusResponse.policies:type_name -> runtimeenforcer.agent.v1.ListPoliciesStatusResponse.PoliciesEntry
+	16, // 7: runtimeenforcer.agent.v1.ViolationRecord.timestamp:type_name -> google.protobuf.Timestamp
+	11, // 8: runtimeenforcer.agent.v1.ScrapeViolationsResponse.violations:type_name -> runtimeenforcer.agent.v1.ViolationRecord
+	2,  // 9: runtimeenforcer.agent.v1.PodView.ContainersEntry.value:type_name -> runtimeenforcer.agent.v1.ContainerMeta
+	8,  // 10: runtimeenforcer.agent.v1.ListPoliciesStatusResponse.PoliciesEntry.value:type_name -> runtimeenforcer.agent.v1.PolicyStatus
+	7,  // 11: runtimeenforcer.agent.v1.AgentObserver.ListPoliciesStatus:input_type -> runtimeenforcer.agent.v1.ListPoliciesStatusRequest
+	5,  // 12: runtimeenforcer.agent.v1.AgentObserver.ListPodCache:input_type -> runtimeenforcer.agent.v1.ListPodCacheRequest
+	10, // 13: runtimeenforcer.agent.v1.AgentObserver.ScrapeViolations:input_type -> runtimeenforcer.agent.v1.ScrapeViolationsRequest
+	9,  // 14: runtimeenforcer.agent.v1.AgentObserver.ListPoliciesStatus:output_type -> runtimeenforcer.agent.v1.ListPoliciesStatusResponse
+	6,  // 15: runtimeenforcer.agent.v1.AgentObserver.ListPodCache:output_type -> runtimeenforcer.agent.v1.ListPodCacheResponse
+	12, // 16: runtimeenforcer.agent.v1.AgentObserver.ScrapeViolations:output_type -> runtimeenforcer.agent.v1.ScrapeViolationsResponse
+	14, // [14:17] is the sub-list for method output_type
+	11, // [11:14] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_proto_agent_v1_agent_proto_init() }
@@ -656,7 +861,7 @@ func file_proto_agent_v1_agent_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_agent_v1_agent_proto_rawDesc), len(file_proto_agent_v1_agent_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   11,
+			NumMessages:   14,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

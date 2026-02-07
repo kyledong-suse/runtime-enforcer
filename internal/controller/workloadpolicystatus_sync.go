@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -12,6 +13,8 @@ import (
 	pb "github.com/rancher-sandbox/runtime-enforcer/proto/agent/v1"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -187,9 +190,12 @@ func (r *WorkloadPolicyStatusSync) sync(
 		}
 	}
 
+	violationsByPolicy := r.getViolationsByPolicy(ctx, nodesInfo)
+
 	// Now we iterate over all WSPs and update their status based on the collected policies status from the agents
 	for _, wp := range wpList.Items {
-		err := r.processWorkloadPolicy(ctx, &wp, nodesInfo)
+		nn := types.NamespacedName{Namespace: wp.Namespace, Name: wp.Name}
+		err := r.processWorkloadPolicy(ctx, &wp, nodesInfo, violationsByPolicy[nn])
 		if err != nil {
 			r.logger.Error(
 				err,
@@ -200,4 +206,58 @@ func (r *WorkloadPolicyStatusSync) sync(
 	}
 
 	return nil
+}
+
+// getViolationsByPolicy gets all the violations for a single policy.
+func (r *WorkloadPolicyStatusSync) getViolationsByPolicy(
+	ctx context.Context,
+	nodesInfo nodesInfoMap,
+) map[types.NamespacedName][]v1alpha1.ViolationRecord {
+	violationsByPolicy := make(map[types.NamespacedName][]v1alpha1.ViolationRecord)
+	for nodeName, info := range nodesInfo {
+		if info.issue.Code != v1alpha1.NodeIssueNone {
+			continue
+		}
+		agentClient, ok := r.conns[nodeName]
+		if !ok {
+			continue
+		}
+		pbViolations, err := agentClient.scrapeViolations(ctx)
+		if err != nil {
+			r.logger.Error(err, "failed to scrape violations", "node", nodeName)
+			continue
+		}
+		for _, v := range pbViolations {
+			nn := parsePolicyNamespacedName(v.GetPolicyName())
+			rec := v1alpha1.ViolationRecord{
+				Timestamp:      metav1.NewTime(v.GetTimestamp().AsTime()),
+				PodName:        v.GetPodName(),
+				ContainerName:  v.GetContainerName(),
+				ExecutablePath: v.GetExecutablePath(),
+				NodeName:       v.GetNodeName(),
+				Action:         v.GetAction(),
+				Count:          safeUint32ToInt32(v.GetCount()),
+			}
+			violationsByPolicy[nn] = append(violationsByPolicy[nn], rec)
+		}
+	}
+
+	return violationsByPolicy
+}
+
+// parsePolicyNamespacedName parses a "namespace/name" string into a NamespacedName.
+// safeUint32ToInt32 converts a uint32 to int32, capping at math.MaxInt32.
+func safeUint32ToInt32(v uint32) int32 {
+	if v > math.MaxInt32 {
+		return math.MaxInt32
+	}
+	return int32(v)
+}
+
+func parsePolicyNamespacedName(s string) types.NamespacedName {
+	parts := strings.SplitN(s, "/", 2) //nolint:mnd // namespace/name has 2 parts
+	if len(parts) == 2 {               //nolint:mnd // namespace/name has 2 parts
+		return types.NamespacedName{Namespace: parts[0], Name: parts[1]}
+	}
+	return types.NamespacedName{Name: s}
 }
