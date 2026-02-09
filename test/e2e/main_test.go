@@ -141,7 +141,14 @@ func getMainTest() types.Feature {
 				err := r.Create(ctx, &policy)
 				require.NoError(t, err, "create policy")
 
-				// todo!: we should check the status of the WP is updated
+				waitForWorkloadPolicyStatusToBeUpdated(ctx, t, policy.DeepCopy())
+				var updated v1alpha1.WorkloadPolicy
+				err = r.Get(ctx, policy.Name, policy.Namespace, &updated)
+				require.NoError(t, err)
+				require.Equal(t, updated.Generation, updated.Status.ObservedGeneration)
+				require.Equal(t, v1alpha1.Active, updated.Status.Phase)
+				require.Empty(t, updated.Status.NodesWithIssues)
+				require.Empty(t, updated.Status.NodesTransitioning)
 
 				return context.WithValue(ctx, key("policy"), &policy)
 			}).
@@ -365,7 +372,18 @@ func getMainTest() types.Feature {
 				[]resources.DeleteOption{},
 				decoder.MutateNamespace(workloadNamespace),
 			)
-			assert.NoError(t, err, "failed to delete test data")
+			require.NoError(t, err, "failed to delete test data")
+
+			// Delete test-policy.
+			testPolicy := v1alpha1.WorkloadPolicy{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-policy", Namespace: workloadNamespace},
+			}
+			_ = r.Delete(ctx, &testPolicy)
+			err = wait.For(
+				conditions.New(r).ResourceDeleted(&testPolicy),
+				wait.WithTimeout(DefaultOperationTimeout),
+			)
+			require.NoError(t, err, "test-policy WorkloadPolicy should be deleted")
 
 			return ctx
 		}).Feature()

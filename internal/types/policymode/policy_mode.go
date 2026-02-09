@@ -1,5 +1,7 @@
 package policymode
 
+import pb "github.com/rancher-sandbox/runtime-enforcer/proto/agent/v1"
+
 const (
 	MonitorString = "monitor"
 	ProtectString = "protect"
@@ -41,5 +43,16 @@ func ParseMode(s string) Mode {
 		return Protect
 	default:
 		panic("unknown string value for policy mode")
+	}
+}
+
+func ParsePolicyModeToProto(s string) pb.PolicyMode {
+	switch s {
+	case MonitorString:
+		return pb.PolicyMode_POLICY_MODE_MONITOR
+	case ProtectString:
+		return pb.PolicyMode_POLICY_MODE_PROTECT
+	default:
+		return pb.PolicyMode_POLICY_MODE_UNSPECIFIED
 	}
 }

@@ -6,14 +6,26 @@ import (
 	"github.com/rancher-sandbox/runtime-enforcer/api/v1alpha1"
 	"github.com/rancher-sandbox/runtime-enforcer/internal/bpf"
 	"github.com/rancher-sandbox/runtime-enforcer/internal/types/policymode"
+	pb "github.com/rancher-sandbox/runtime-enforcer/proto/agent/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
 type (
 	PolicyID             = uint64
 	policyByContainer    = map[ContainerName]PolicyID
-	namespacedPolicyName = string
+	NamespacedPolicyName = string
 )
+
+type PolicyStatus struct {
+	State   pb.PolicyState
+	Mode    pb.PolicyMode
+	Message string
+}
+
+type WPInfo struct {
+	polByContainer policyByContainer
+	status         PolicyStatus
+}
 
 const (
 	// PolicyIDNone is used to indicate no policy associated with the cgroup.
@@ -27,9 +39,9 @@ func (r *Resolver) allocPolicyID() PolicyID {
 	return id
 }
 
-// upsertPolicy adds or updates all entries for the given policy ID in BPF maps.
+// upsertPolicyIDInBPF adds or updates all entries for the given policy ID in BPF maps.
 // This must be called with the resolver lock held.
-func (r *Resolver) upsertPolicy(
+func (r *Resolver) upsertPolicyIDInBPF(
 	policyID PolicyID,
 	allowedBinaries []string,
 	mode policymode.Mode,
@@ -44,9 +56,9 @@ func (r *Resolver) upsertPolicy(
 	return nil
 }
 
-// removePolicy removes all entries for the given policy ID from BPF maps.
+// clearPolicyIDFromBPF removes all entries for the given policy ID from BPF maps.
 // This must be called with the resolver lock held.
-func (r *Resolver) removePolicy(policyID PolicyID) error {
+func (r *Resolver) clearPolicyIDFromBPF(policyID PolicyID) error {
 	// TODO: refactor the PolicyUpdateBinariesFunc to not collapse the add and replace
 	// operations behind the same API. By doing that we will not need to pass a dummy values slice here.
 	if err := r.policyUpdateBinariesFunc(policyID, nil, bpf.RemoveValuesFromPolicy); err != nil {
@@ -81,7 +93,7 @@ func (r *Resolver) applyPolicyToPod(state *podState, applied policyByContainer) 
 // It is used to remove policy from containers that are no longer in the spec.
 // This must be called with the resolver lock held.
 func (r *Resolver) removePolicyFromPod(
-	wpKey namespacedPolicyName,
+	wpKey NamespacedPolicyName,
 	podState *podState,
 	wpState, removed policyByContainer,
 ) error {
@@ -94,7 +106,7 @@ func (r *Resolver) removePolicyFromPod(
 			return fmt.Errorf("failed to remove cgroups for pod %s, container %s, policy %s: %w",
 				podState.podName(), container.name, podState.policyLabel(), err)
 		}
-		if err := r.removePolicy(policyID); err != nil {
+		if err := r.clearPolicyIDFromBPF(policyID); err != nil {
 			return fmt.Errorf("failed to clear policy for wp %s, container %s: %w", wpKey, container.name, err)
 		}
 		delete(wpState, container.name)
@@ -122,7 +134,7 @@ func (r *Resolver) applyPolicyToPodIfPresent(state *podState) error {
 		)
 	}
 
-	return r.applyPolicyToPod(state, pol)
+	return r.applyPolicyToPod(state, pol.polByContainer)
 }
 
 // syncWorkloadPolicy ensures state and BPF maps match wp.Spec.RulesByContainer:
@@ -136,7 +148,7 @@ func (r *Resolver) syncWorkloadPolicy(wp *v1alpha1.WorkloadPolicy) (policyByCont
 	newContainers := make(policyByContainer)
 
 	for containerName, containerRules := range wp.Spec.RulesByContainer {
-		polID, hadPolicyID := state[containerName]
+		polID, hadPolicyID := state.polByContainer[containerName]
 		op := bpf.ReplaceValuesInPolicy
 		if !hadPolicyID {
 			polID = r.allocPolicyID()
@@ -146,8 +158,11 @@ func (r *Resolver) syncWorkloadPolicy(wp *v1alpha1.WorkloadPolicy) (policyByCont
 				"container", containerName)
 			op = bpf.AddValuesToPolicy
 		}
-		if err := r.upsertPolicy(polID, containerRules.Executables.Allowed, mode, op); err != nil {
-			return nil, fmt.Errorf("failed to populate policy for wp %s, container %s: %w", wpKey, containerName, err)
+		if err := r.upsertPolicyIDInBPF(polID, containerRules.Executables.Allowed, mode, op); err != nil {
+			// Return newContainers to allow rollback.
+			return newContainers, fmt.Errorf(
+				"failed to populate policy for wp %s, container %s: %w",
+				wpKey, containerName, err)
 		}
 	}
 
@@ -170,10 +185,15 @@ func (r *Resolver) handleWPAdd(wp *v1alpha1.WorkloadPolicy) error {
 	}
 
 	state := make(policyByContainer, len(wp.Spec.RulesByContainer))
-	r.wpState[wpKey] = state
+	r.wpState[wpKey] = WPInfo{polByContainer: state}
 	var err error
 	var newContainers policyByContainer
 	if newContainers, err = r.syncWorkloadPolicy(wp); err != nil {
+		// Rollback: remove any new policy IDs that were created (not in state yet).
+		if rollbackErr := r.tearDownPolicyIDs(wpKey, newContainers); rollbackErr != nil {
+			r.logger.Error("failed to rollback policy", "error", rollbackErr)
+		}
+		delete(r.wpState, wpKey)
 		return err
 	}
 	for containerName, policyID := range newContainers {
@@ -190,6 +210,8 @@ func (r *Resolver) handleWPAdd(wp *v1alpha1.WorkloadPolicy) error {
 			return err
 		}
 	}
+
+	r.setPolicyStatus(wp, pb.PolicyState_POLICY_STATE_READY, "")
 	return nil
 }
 
@@ -205,26 +227,30 @@ func (r *Resolver) handleWPUpdate(wp *v1alpha1.WorkloadPolicy) error {
 	defer r.mu.Unlock()
 
 	wpKey := wp.NamespacedName()
-	state, exists := r.wpState[wpKey]
+	info, exists := r.wpState[wpKey]
 	if !exists {
 		return fmt.Errorf("workload policy does not exist in internal state: %s", wpKey)
 	}
 	newContainers, err := r.syncWorkloadPolicy(wp)
 	if err != nil {
+		// Rollback: remove any new policy IDs that were created (not in state yet).
+		if rollbackErr := r.tearDownPolicyIDs(wpKey, newContainers); rollbackErr != nil {
+			r.logger.Error("failed to rollback policy", "error", rollbackErr)
+		}
 		return err
 	}
 	for containerName, policyID := range newContainers {
-		state[containerName] = policyID
+		info.polByContainer[containerName] = policyID
 	}
 
 	// Split state into applied (still in spec) vs removed (no longer in spec).
 	appliedMap := make(policyByContainer, len(wp.Spec.RulesByContainer))
-	removedMap := make(policyByContainer, len(state))
-	for containerName := range state {
+	removedMap := make(policyByContainer, len(info.polByContainer))
+	for containerName := range info.polByContainer {
 		if _, stillPresent := wp.Spec.RulesByContainer[containerName]; stillPresent {
-			appliedMap[containerName] = state[containerName]
+			appliedMap[containerName] = info.polByContainer[containerName]
 		} else {
-			removedMap[containerName] = state[containerName]
+			removedMap[containerName] = info.polByContainer[containerName]
 		}
 	}
 
@@ -233,15 +259,39 @@ func (r *Resolver) handleWPUpdate(wp *v1alpha1.WorkloadPolicy) error {
 		if !podState.matchPolicy(wp.Name) {
 			continue
 		}
-		if err = r.removePolicyFromPod(wpKey, podState, state, removedMap); err != nil {
+		if err = r.removePolicyFromPod(wpKey, podState, info.polByContainer, removedMap); err != nil {
 			return err
 		}
 		if err = r.applyPolicyToPod(podState, appliedMap); err != nil {
 			return err
 		}
 	}
-
+	r.setPolicyStatus(wp, pb.PolicyState_POLICY_STATE_READY, "")
 	return nil
+}
+
+// tearDownPolicyIDs tears down all BPF state for the given policy IDs (cgroup map and per-ID values/mode).
+// Must be called with the resolver lock held.
+func (r *Resolver) tearDownPolicyIDs(wpKey NamespacedPolicyName, polByContainer policyByContainer) error {
+	for containerName, polID := range polByContainer {
+		if err := r.cgroupToPolicyMapUpdateFunc(polID, []CgroupID{}, bpf.RemovePolicy); err != nil {
+			return fmt.Errorf("failed to remove policy from cgroup map: %w", err)
+		}
+		if err := r.clearPolicyIDFromBPF(polID); err != nil {
+			return fmt.Errorf("failed to clear policy for wp %s, container %s: %w", wpKey, containerName, err)
+		}
+	}
+	return nil
+}
+
+// Must be called with the resolver lock held.
+func (r *Resolver) deleteWorkloadPolicy(wp *v1alpha1.WorkloadPolicy) error {
+	wpKey := wp.NamespacedName()
+	info, exists := r.wpState[wpKey]
+	if !exists {
+		return fmt.Errorf("workload policy does not exist in internal state: %s", wpKey)
+	}
+	return r.tearDownPolicyIDs(wpKey, info.polByContainer)
 }
 
 // handleWPDelete removes a workload policy from the resolver cache and updates the BPF maps accordingly.
@@ -254,24 +304,10 @@ func (r *Resolver) handleWPDelete(wp *v1alpha1.WorkloadPolicy) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	wpKey := wp.NamespacedName()
-	state, exists := r.wpState[wpKey]
-	if !exists {
-		return fmt.Errorf("workload policy does not exist in internal state: %s", wpKey)
+	if err := r.deleteWorkloadPolicy(wp); err != nil {
+		return err
 	}
-	delete(r.wpState, wpKey)
-
-	for containerName, policyID := range state {
-		// First we remove the association cgroupID -> PolicyID and then we will remove the policy values and modes
-
-		// iteration + deletion on the ebpf map
-		if err := r.cgroupToPolicyMapUpdateFunc(policyID, []CgroupID{}, bpf.RemovePolicy); err != nil {
-			return fmt.Errorf("failed to remove policy from cgroup map: %w", err)
-		}
-		if err := r.removePolicy(policyID); err != nil {
-			return fmt.Errorf("failed to clear policy for wp %s, container %s: %w", wpKey, containerName, err)
-		}
-	}
+	delete(r.wpState, wp.NamespacedName())
 	return nil
 }
 
@@ -291,7 +327,13 @@ func (r *Resolver) PolicyEventHandlers() cache.ResourceEventHandler {
 				return
 			}
 			if err := r.handleWPAdd(wp); err != nil {
-				// todo!: we need to populate an internal status to report the failure to the user
+				r.mu.Lock()
+				if rollbackErr := r.deleteWorkloadPolicy(wp); rollbackErr != nil {
+					r.logger.Error("failed to rollback policy", "error", rollbackErr)
+				}
+				delete(r.wpState, wp.NamespacedName())
+				r.setPolicyStatus(wp, pb.PolicyState_POLICY_STATE_ERROR, err.Error())
+				r.mu.Unlock()
 				r.logger.Error("failed to add policy", "error", err)
 				return
 			}
@@ -302,6 +344,12 @@ func (r *Resolver) PolicyEventHandlers() cache.ResourceEventHandler {
 				return
 			}
 			if err := r.handleWPUpdate(wp); err != nil {
+				r.mu.Lock()
+				if rollbackErr := r.deleteWorkloadPolicy(wp); rollbackErr != nil {
+					r.logger.Error("failed to rollback policy", "error", rollbackErr)
+				}
+				r.setPolicyStatus(wp, pb.PolicyState_POLICY_STATE_ERROR, err.Error())
+				r.mu.Unlock()
 				r.logger.Error("failed to update policy", "error", err)
 				return
 			}
@@ -319,15 +367,30 @@ func (r *Resolver) PolicyEventHandlers() cache.ResourceEventHandler {
 	}
 }
 
-// ListPolicies returns a list of all workload policies info.
-func (r *Resolver) ListPolicies() []string {
+// GetPolicyStatuses returns the current policy statuses keyed by namespaced name (e.g. "namespace/name").
+func (r *Resolver) GetPolicyStatuses() map[NamespacedPolicyName]PolicyStatus {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	// todo!: in the future we should also provide the status of the policy not just the name
-	policiesNames := make([]string, 0, len(r.wpState))
-	for name := range r.wpState {
-		policiesNames = append(policiesNames, name)
+	statuses := make(map[NamespacedPolicyName]PolicyStatus, len(r.wpState))
+	for k, v := range r.wpState {
+		statuses[k] = v.status
 	}
-	return policiesNames
+	return statuses
+}
+
+// setPolicyStatus updates the status for the given workload policy.
+// If the policy is not in wpState, a WPInfo with empty polByContainer is stored,
+// so that ERROR state can still be reported via GetPolicyStatuses.
+func (r *Resolver) setPolicyStatus(wp *v1alpha1.WorkloadPolicy, state pb.PolicyState, message string) {
+	wpKey := wp.NamespacedName()
+	mode := policymode.ParsePolicyModeToProto(wp.Spec.Mode)
+	st := PolicyStatus{State: state, Mode: mode, Message: message}
+	info, ok := r.wpState[wpKey]
+	if !ok {
+		r.wpState[wpKey] = WPInfo{polByContainer: make(policyByContainer), status: st}
+		return
+	}
+	info.status = st
+	r.wpState[wpKey] = info
 }
