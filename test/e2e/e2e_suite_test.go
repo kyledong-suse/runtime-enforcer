@@ -46,6 +46,7 @@ type helmChart struct {
 }
 
 func getCharts() []helmChart {
+	// The order here is relevant because the installation of certain charts may depend on others being present
 	return []helmChart{
 		{
 			name:          "cert-manager",
@@ -160,8 +161,10 @@ func uninstallHelmRepos(charts []helmChart) env.Func {
 		manager := helm.New(config.KubeconfigFile())
 		logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 
-		for _, chart := range charts {
-			logger.Info("try to uninstall helm chart",
+		// we need to uninstall the chart in reverse order to guarantee dependencies are respected.
+		for i := len(charts) - 1; i >= 0; i-- {
+			chart := charts[i]
+			logger.Info("uninstall helm release if present",
 				"name", chart.name,
 				"namespace", chart.namespace)
 			// First we try to uninstall the chart
@@ -178,9 +181,8 @@ func uninstallHelmRepos(charts []helmChart) env.Func {
 			}
 
 			// Then we try to remove the repo
-			logger.Info("try to remove helm repo",
-				"repoURL", chart.repoURL,
-				"repoLocalName", chart.repoLocalName,
+			logger.Info("remove helm repo if present",
+				"repo", chart.repoLocalName,
 			)
 			err = manager.RunRepo(helm.WithArgs("remove", chart.repoLocalName))
 			if err != nil && !strings.Contains(err.Error(), helmRepoNotFoundString) {
@@ -230,13 +232,13 @@ func installHelmRepos(charts []helmChart) env.Func {
 				helm.WithTimeout(DefaultHelmTimeout.String()),
 			}
 			opts = append(opts, chart.helmOptions...)
-			logger.Info("installing helm chart",
-				"path", chart.path,
+			logger.Info("installing helm release",
+				"path", chartPath,
 				"name", chart.name,
 				"namespace", chart.namespace,
 			)
 			if err = manager.RunInstall(opts...); err != nil {
-				return ctx, fmt.Errorf("failed to install chart '%s': %w", chart.name, err)
+				return ctx, fmt.Errorf("failed to install release '%s': %w", chart.name, err)
 			}
 		}
 		return ctx, nil
