@@ -20,8 +20,6 @@ func (m *Manager) GetCgroupTrackerUpdateFunc() func(cgID uint64, cgroupPath stri
 }
 
 func (m *Manager) updateCgTrackerMap(cgID uint64, cgroupPath string) error {
-	// todo!: to be sure the manager is not closing the ebpf objects, we should add a mutex around this function to avoid issues at cleanup time
-
 	// we populate the entry for the cgroup id with itself as tracker id so that the child cgroups
 	// can inherit the same tracker id
 	if err := m.objs.CgtrackerMap.Update(&cgID, &cgID, ebpf.UpdateAny); err != nil {

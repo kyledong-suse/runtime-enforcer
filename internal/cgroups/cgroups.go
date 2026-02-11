@@ -33,7 +33,6 @@ const (
 	CgroupSubsysCount = 15
 
 	// defaultProcFSPath is the default path to the proc filesystem.
-	// todo!: make this configurable.
 	defaultProcFSPath = "/proc"
 )
 
@@ -254,7 +253,6 @@ func getHostCgroupRoot() (string, error) {
 		multiErr = multierr.Append(multiErr, fmt.Errorf("failed to set path %s as cgroup root: %w", path, err))
 	}
 
-	// todo!: we can probably get a custom cgroup root from the user through env variable.
 	return "", multiErr
 }
 
