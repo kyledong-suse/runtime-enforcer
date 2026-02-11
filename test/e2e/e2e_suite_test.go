@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"sigs.k8s.io/e2e-framework/klient/conf"
 	"sigs.k8s.io/e2e-framework/pkg/env"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/envfuncs"
@@ -35,39 +36,64 @@ const (
 	helmRepoNotFoundString = "no repo named"
 )
 
+func useExistingCluster() bool {
+	return os.Getenv("USE_EXISTING_CLUSTER") == "true"
+}
+
 func TestMain(m *testing.M) {
-	cfg, _ := envconf.NewFromFlags()
-	testEnv = env.NewWithConfig(cfg)
-	kindClusterName = envconf.RandomName("test-controller-e2e", 32)
 	namespace = envconf.RandomName("enforcer-namespace", 16)
 	otelNamespace = envconf.RandomName("otel", 16)
 
-	testEnv.Setup(
-		envfuncs.CreateCluster(kind.NewProvider(), kindClusterName),
+	commonSetupFuncs := []env.Func{
 		envfuncs.CreateNamespace(namespace),
-		envfuncs.LoadImageToCluster(kindClusterName,
-			"ghcr.io/rancher-sandbox/runtime-enforcer/operator:latest",
-			"--verbose",
-			"--mode",
-			"direct"),
-		envfuncs.LoadImageToCluster(kindClusterName,
-			"ghcr.io/rancher-sandbox/runtime-enforcer/agent:latest",
-			"--verbose",
-			"--mode",
-			"direct"),
 		removeHelmRepos(),
 		InstallOtelCollector(),
 		InstallCertManager(),
 		InstallRuntimeEnforcer(),
-	)
+	}
 
-	testEnv.Finish(
-		envfuncs.ExportClusterLogs(kindClusterName, "./logs"),
+	commonFinishFuncs := []env.Func{
+		UninstallRuntimeEnforcer(),
+		UninstallOtelCollector(),
+		UninstallCertManager(),
 		envfuncs.DeleteNamespace(namespace),
-		envfuncs.DestroyCluster(kindClusterName),
 		removeHelmRepos(),
-	)
+	}
 
+	if useExistingCluster() {
+		path := conf.ResolveKubeConfigFile()
+		cfg := envconf.NewWithKubeConfig(path)
+		cfg.WithNamespace(namespace)
+		testEnv = env.NewWithConfig(cfg)
+	} else {
+		cfg, _ := envconf.NewFromFlags()
+		testEnv = env.NewWithConfig(cfg)
+		kindClusterName = envconf.RandomName("test-controller-e2e", 32)
+
+		// For the setup we need to prepend the cluster creation and the image load
+		commonSetupFuncs = append([]env.Func{
+			envfuncs.CreateCluster(kind.NewProvider(), kindClusterName),
+			envfuncs.LoadImageToCluster(kindClusterName,
+				"ghcr.io/rancher-sandbox/runtime-enforcer/operator:latest",
+				"--verbose",
+				"--mode",
+				"direct"),
+			envfuncs.LoadImageToCluster(kindClusterName,
+				"ghcr.io/rancher-sandbox/runtime-enforcer/agent:latest",
+				"--verbose",
+				"--mode",
+				"direct"),
+		}, commonSetupFuncs...)
+
+		// For the cleanup we need to prepend the log exporter and append the cluster destruction
+		commonFinishFuncs = append([]env.Func{
+			envfuncs.ExportClusterLogs(kindClusterName, "./logs"),
+		}, commonFinishFuncs...)
+		commonFinishFuncs = append(commonFinishFuncs, envfuncs.DestroyCluster(kindClusterName))
+	}
+
+	testEnv.Setup(commonSetupFuncs...)
+	testEnv.Finish(commonFinishFuncs...)
 	os.Exit(testEnv.Run(m))
 }
 
@@ -193,6 +219,64 @@ func InstallOtelCollector() env.Func {
 			return ctx, fmt.Errorf("failed to install otel collector: %w", err)
 		}
 
+		return ctx, nil
+	}
+}
+
+func UninstallRuntimeEnforcer() env.Func {
+	return func(ctx context.Context, config *envconf.Config) (context.Context, error) {
+		manager := helm.New(config.KubeconfigFile())
+		err := manager.RunUninstall(
+			helm.WithName("runtime-enforcer"),
+			helm.WithNamespace(namespace),
+			helm.WithTimeout(DefaultHelmTimeout.String()),
+		)
+		if err != nil {
+			return ctx, fmt.Errorf("failed to uninstall Runtime Enforcer: %w", err)
+		}
+		return ctx, nil
+	}
+}
+
+func UninstallCertManager() env.Func {
+	return func(ctx context.Context, config *envconf.Config) (context.Context, error) {
+		manager := helm.New(config.KubeconfigFile())
+
+		// Uninstall cert-manager CSI driver
+		err := manager.RunUninstall(
+			helm.WithName("cert-manager-csi-driver"),
+			helm.WithNamespace("cert-manager"),
+			helm.WithTimeout(DefaultHelmTimeout.String()),
+		)
+		if err != nil {
+			return ctx, fmt.Errorf("failed to uninstall cert manager CSI driver: %w", err)
+		}
+
+		// Uninstall cert-manager
+		err = manager.RunUninstall(
+			helm.WithName("cert-manager"),
+			helm.WithNamespace("cert-manager"),
+			helm.WithTimeout(DefaultHelmTimeout.String()),
+		)
+		if err != nil {
+			return ctx, fmt.Errorf("failed to uninstall cert manager: %w", err)
+		}
+
+		return ctx, nil
+	}
+}
+
+func UninstallOtelCollector() env.Func {
+	return func(ctx context.Context, config *envconf.Config) (context.Context, error) {
+		manager := helm.New(config.KubeconfigFile())
+		err := manager.RunUninstall(
+			helm.WithName("open-telemetry-collector"),
+			helm.WithNamespace(otelNamespace),
+			helm.WithTimeout(DefaultHelmTimeout.String()),
+		)
+		if err != nil {
+			return ctx, fmt.Errorf("failed to uninstall otel collector: %w", err)
+		}
 		return ctx, nil
 	}
 }
