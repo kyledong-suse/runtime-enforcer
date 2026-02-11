@@ -247,11 +247,11 @@ func getMonitoringTest() types.Feature {
 			clientset, err = kubernetes.NewForConfig(r.GetConfig())
 			require.NoError(t, err)
 
-			stream, err = clientset.CoreV1().Pods(otelNamespace).
-				GetLogs(otelCollectorPodName, &corev1.PodLogOptions{
-					Follow: true,
-				}).Stream(ctx)
-
+			pods := clientset.CoreV1().Pods(otelCollectorNamespace)
+			assert.NotNil(t, pods, "failed to create pod clientset")
+			request := pods.GetLogs(otelCollectorPodName, &corev1.PodLogOptions{Follow: true})
+			assert.NotNil(t, request, "failed to create log request")
+			stream, err = request.Stream(ctx)
 			require.NoError(t, err)
 
 			var otelLogStream *OtelLogStream
