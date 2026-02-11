@@ -1,12 +1,13 @@
 package resolver
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/rancher-sandbox/runtime-enforcer/api/v1alpha1"
 	"github.com/rancher-sandbox/runtime-enforcer/internal/bpf"
 	"github.com/rancher-sandbox/runtime-enforcer/internal/types/policymode"
-	pb "github.com/rancher-sandbox/runtime-enforcer/proto/agent/v1"
+	agentv1 "github.com/rancher-sandbox/runtime-enforcer/proto/agent/v1"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -17,8 +18,8 @@ type (
 )
 
 type PolicyStatus struct {
-	State   pb.PolicyState
-	Mode    pb.PolicyMode
+	State   agentv1.PolicyState
+	Mode    agentv1.PolicyMode
 	Message string
 }
 
@@ -159,8 +160,12 @@ func (r *Resolver) syncWorkloadPolicy(wp *v1alpha1.WorkloadPolicy) (policyByCont
 			op = bpf.AddValuesToPolicy
 		}
 		if err := r.upsertPolicyIDInBPF(polID, containerRules.Executables.Allowed, mode, op); err != nil {
-			// Return newContainers to allow rollback.
-			return newContainers, fmt.Errorf(
+			// Rollback: tear down any new policy IDs we created before returning.
+			if rollbackErr := r.tearDownPolicyIDs(wpKey, newContainers); rollbackErr != nil {
+				r.logger.Error("failed to rollback policy", "error", rollbackErr)
+				err = errors.Join(err, rollbackErr)
+			}
+			return nil, fmt.Errorf(
 				"failed to populate policy for wp %s, container %s: %w",
 				wpKey, containerName, err)
 		}
@@ -179,6 +184,13 @@ func (r *Resolver) handleWPAdd(wp *v1alpha1.WorkloadPolicy) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	var err error
+	defer func() {
+		if err != nil {
+			r.rollbackFailedPolicy(wp, err, true)
+		}
+	}()
+
 	wpKey := wp.NamespacedName()
 	if _, exists := r.wpState[wpKey]; exists {
 		return fmt.Errorf("workload policy already exists in internal state: %s", wpKey)
@@ -186,14 +198,11 @@ func (r *Resolver) handleWPAdd(wp *v1alpha1.WorkloadPolicy) error {
 
 	state := make(policyByContainer, len(wp.Spec.RulesByContainer))
 	r.wpState[wpKey] = WPInfo{polByContainer: state}
-	var err error
 	var newContainers policyByContainer
 	if newContainers, err = r.syncWorkloadPolicy(wp); err != nil {
-		// Rollback: remove any new policy IDs that were created (not in state yet).
-		if rollbackErr := r.tearDownPolicyIDs(wpKey, newContainers); rollbackErr != nil {
-			r.logger.Error("failed to rollback policy", "error", rollbackErr)
-		}
+		// syncWorkloadPolicy already rolled back its BPF state internally.
 		delete(r.wpState, wpKey)
+		r.setPolicyStatus(wp, agentv1.PolicyState_POLICY_STATE_ERROR, err.Error())
 		return err
 	}
 	for containerName, policyID := range newContainers {
@@ -211,7 +220,7 @@ func (r *Resolver) handleWPAdd(wp *v1alpha1.WorkloadPolicy) error {
 		}
 	}
 
-	r.setPolicyStatus(wp, pb.PolicyState_POLICY_STATE_READY, "")
+	r.setPolicyStatus(wp, agentv1.PolicyState_POLICY_STATE_READY, "")
 	return nil
 }
 
@@ -226,17 +235,23 @@ func (r *Resolver) handleWPUpdate(wp *v1alpha1.WorkloadPolicy) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	var err error
+	defer func() {
+		if err != nil {
+			r.rollbackFailedPolicy(wp, err, false)
+		}
+	}()
+
 	wpKey := wp.NamespacedName()
 	info, exists := r.wpState[wpKey]
 	if !exists {
 		return fmt.Errorf("workload policy does not exist in internal state: %s", wpKey)
 	}
-	newContainers, err := r.syncWorkloadPolicy(wp)
-	if err != nil {
-		// Rollback: remove any new policy IDs that were created (not in state yet).
-		if rollbackErr := r.tearDownPolicyIDs(wpKey, newContainers); rollbackErr != nil {
-			r.logger.Error("failed to rollback policy", "error", rollbackErr)
-		}
+
+	var newContainers policyByContainer
+	if newContainers, err = r.syncWorkloadPolicy(wp); err != nil {
+		// syncWorkloadPolicy already rolled back its BPF state internally.
+		r.setPolicyStatus(wp, agentv1.PolicyState_POLICY_STATE_ERROR, err.Error())
 		return err
 	}
 	for containerName, policyID := range newContainers {
@@ -254,7 +269,6 @@ func (r *Resolver) handleWPUpdate(wp *v1alpha1.WorkloadPolicy) error {
 		}
 	}
 
-	// Update each matching pod: first remove policy for dropped containers, then apply for the rest.
 	for _, podState := range r.podCache {
 		if !podState.matchPolicy(wp.Name) {
 			continue
@@ -266,7 +280,7 @@ func (r *Resolver) handleWPUpdate(wp *v1alpha1.WorkloadPolicy) error {
 			return err
 		}
 	}
-	r.setPolicyStatus(wp, pb.PolicyState_POLICY_STATE_READY, "")
+	r.setPolicyStatus(wp, agentv1.PolicyState_POLICY_STATE_READY, "")
 	return nil
 }
 
@@ -327,13 +341,6 @@ func (r *Resolver) PolicyEventHandlers() cache.ResourceEventHandler {
 				return
 			}
 			if err := r.handleWPAdd(wp); err != nil {
-				r.mu.Lock()
-				if rollbackErr := r.deleteWorkloadPolicy(wp); rollbackErr != nil {
-					r.logger.Error("failed to rollback policy", "error", rollbackErr)
-				}
-				delete(r.wpState, wp.NamespacedName())
-				r.setPolicyStatus(wp, pb.PolicyState_POLICY_STATE_ERROR, err.Error())
-				r.mu.Unlock()
 				r.logger.Error("failed to add policy", "error", err)
 				return
 			}
@@ -344,12 +351,6 @@ func (r *Resolver) PolicyEventHandlers() cache.ResourceEventHandler {
 				return
 			}
 			if err := r.handleWPUpdate(wp); err != nil {
-				r.mu.Lock()
-				if rollbackErr := r.deleteWorkloadPolicy(wp); rollbackErr != nil {
-					r.logger.Error("failed to rollback policy", "error", rollbackErr)
-				}
-				r.setPolicyStatus(wp, pb.PolicyState_POLICY_STATE_ERROR, err.Error())
-				r.mu.Unlock()
 				r.logger.Error("failed to update policy", "error", err)
 				return
 			}
@@ -379,10 +380,23 @@ func (r *Resolver) GetPolicyStatuses() map[NamespacedPolicyName]PolicyStatus {
 	return statuses
 }
 
+// rollbackFailedPolicy deletes the policy from the resolver cache and sets the status to ERROR.
+// Must be called with the resolver lock held.
+func (r *Resolver) rollbackFailedPolicy(wp *v1alpha1.WorkloadPolicy, err error, removeFromState bool) {
+	if rollbackErr := r.deleteWorkloadPolicy(wp); rollbackErr != nil {
+		r.logger.Error("failed to rollback policy", "error", rollbackErr)
+		err = errors.Join(err, rollbackErr)
+	}
+	if removeFromState {
+		delete(r.wpState, wp.NamespacedName())
+	}
+	r.setPolicyStatus(wp, agentv1.PolicyState_POLICY_STATE_ERROR, err.Error())
+}
+
 // setPolicyStatus updates the status for the given workload policy.
 // If the policy is not in wpState, a WPInfo with empty polByContainer is stored,
 // so that ERROR state can still be reported via GetPolicyStatuses.
-func (r *Resolver) setPolicyStatus(wp *v1alpha1.WorkloadPolicy, state pb.PolicyState, message string) {
+func (r *Resolver) setPolicyStatus(wp *v1alpha1.WorkloadPolicy, state agentv1.PolicyState, message string) {
 	wpKey := wp.NamespacedName()
 	mode := policymode.ParsePolicyModeToProto(wp.Spec.Mode)
 	st := PolicyStatus{State: state, Mode: mode, Message: message}

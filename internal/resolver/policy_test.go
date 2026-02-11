@@ -9,7 +9,7 @@ import (
 	"github.com/rancher-sandbox/runtime-enforcer/api/v1alpha1"
 	"github.com/rancher-sandbox/runtime-enforcer/internal/bpf"
 	"github.com/rancher-sandbox/runtime-enforcer/internal/types/policymode"
-	pb "github.com/rancher-sandbox/runtime-enforcer/proto/agent/v1"
+	agentv1 "github.com/rancher-sandbox/runtime-enforcer/proto/agent/v1"
 	"github.com/stretchr/testify/require"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -137,8 +137,8 @@ func TestHandleWP_Lifecycle(t *testing.T) {
 	statuses := r.GetPolicyStatuses()
 	require.Contains(t, statuses, key)
 	require.Equal(t, PolicyStatus{
-		State:   pb.PolicyState_POLICY_STATE_READY,
-		Mode:    pb.PolicyMode_POLICY_MODE_MONITOR,
+		State:   agentv1.PolicyState_POLICY_STATE_READY,
+		Mode:    agentv1.PolicyMode_POLICY_MODE_MONITOR,
 		Message: "",
 	}, statuses[key])
 
@@ -200,7 +200,7 @@ func TestPolicyEventHandlers_AddFailure_RollbackAndStatus(t *testing.T) {
 
 	statuses := r.GetPolicyStatuses()
 	require.Contains(t, statuses, key, "status must be stored after failed add (for agent to report ERROR)")
-	require.Equal(t, pb.PolicyState_POLICY_STATE_ERROR, statuses[key].State)
+	require.Equal(t, agentv1.PolicyState_POLICY_STATE_ERROR, statuses[key].State)
 	require.Contains(t, statuses[key].Message, "failed to add policy to cgroups", statuses[key].Message)
 	require.Empty(t, r.wpState[key].polByContainer,
 		"rollback clears BPF state; status entry has empty polByContainer")
@@ -265,7 +265,7 @@ func TestPolicyEventHandlers_UpdateFailure_RollbackAndStatus(t *testing.T) {
 
 	statuses := r.GetPolicyStatuses()
 	require.Contains(t, statuses, key)
-	require.Equal(t, pb.PolicyState_POLICY_STATE_ERROR, statuses[key].State)
+	require.Equal(t, agentv1.PolicyState_POLICY_STATE_ERROR, statuses[key].State)
 	require.Contains(t, statuses[key].Message, "failed to remove cgroups", statuses[key].Message)
 	require.Contains(t, r.wpState[key].polByContainer, c2,
 		"rollback should leave c2 in internal state when update fails while removing it")
