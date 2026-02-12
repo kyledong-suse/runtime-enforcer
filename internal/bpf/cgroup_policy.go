@@ -106,7 +106,6 @@ func removeCgroups(cgToPol *ebpf.Map, targetPolID uint64, cgroupIDs []uint64) er
 }
 
 func (m *Manager) updateCgroupPolicy(targetPolID uint64, cgroupIDs []uint64, op CgroupPolicyOperation) error {
-	// todo!: to be sure the manager is not closing the ebpf objects, we should add a mutex around this function to avoid issues at cleanup time
 	cgToPol := m.objs.CgToPolicyMap
 	if cgToPol == nil {
 		return errors.New("cgroup to policy map is nil")

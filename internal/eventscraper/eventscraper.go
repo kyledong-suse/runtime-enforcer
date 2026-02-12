@@ -105,7 +105,6 @@ func (es *EventScraper) getKubeProcessInfo(event *bpf.ProcessEvent) *KubeProcess
 }
 
 // Start begins the event scraping process.
-// todo!: we should also send the initial state of the processes running on the system. We could use BPF iterators or /proc.
 func (es *EventScraper) Start(ctx context.Context) error {
 	for {
 		select {
@@ -145,9 +144,6 @@ func (es *EventScraper) Start(ctx context.Context) error {
 				attribute.String("k8s.pod.name", kubeInfo.PodName),
 				attribute.String("container.full_id", kubeInfo.ContainerID),
 				attribute.String("container.name", kubeInfo.ContainerName),
-				// todo!: not sure we need this info for v1 (?)
-				// attribute.Int64("proc.pid", int64(proc.GetPid().GetValue())),
-				// attribute.String("proc.pexepath", proc.GetBinary()),
 				attribute.String("proc.exepath", kubeInfo.ExecutablePath),
 				attribute.String("action", action),
 			)
