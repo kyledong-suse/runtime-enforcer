@@ -29,11 +29,14 @@ const (
 	runtimeEnforcerE2EPrefix = "run-enf-e2e-"
 	otelCollectorNamespace   = runtimeEnforcerE2EPrefix + "otel-collector"
 	runtimeEnforcerNamespace = runtimeEnforcerE2EPrefix + "runtime-enforcer"
-	certManagerNamespace     = runtimeEnforcerE2EPrefix + "cert-manager"
 )
 
 func useExistingCluster() bool {
-	return os.Getenv("USE_EXISTING_CLUSTER") == "true"
+	return os.Getenv("E2E_USE_EXISTING_CLUSTER") == "true"
+}
+
+func installDependencies() bool {
+	return os.Getenv("E2E_SKIP_DEPENDENCIES") != "true"
 }
 
 type helmChart struct {
@@ -46,29 +49,11 @@ type helmChart struct {
 }
 
 func getCharts() []helmChart {
-	// The order here is relevant because the installation of certain charts may depend on others being present
-	return []helmChart{
-		{
-			name:          "cert-manager",
-			namespace:     certManagerNamespace,
-			repoLocalName: runtimeEnforcerE2EPrefix + "cert-manager-repo",
-			repoURL:       "https://charts.jetstack.io",
-			path:          "/cert-manager",
-			helmOptions: []helm.Option{
-				helm.WithArgs("--version", "v1.18.2"),
-				helm.WithArgs("--set", "installCRDs=true"),
-			},
-		},
-		{
-			name:          "cert-manager-csi-driver",
-			namespace:     runtimeEnforcerE2EPrefix + "cert-manager-csi-driver",
-			repoLocalName: runtimeEnforcerE2EPrefix + "cert-manager-csi-driver-repo",
-			repoURL:       "https://charts.jetstack.io",
-			path:          "/cert-manager-csi-driver",
-			helmOptions: []helm.Option{
-				helm.WithArgs("--version", "v0.12.0"),
-			},
-		},
+	// The order of the charts is relevant because the installation
+	// of certain charts may depend on others being present.
+	//
+	// There are the charts that are always installed by tests.
+	charts := []helmChart{
 		{
 			name:          "otel-collector",
 			namespace:     otelCollectorNamespace,
@@ -106,6 +91,35 @@ func getCharts() []helmChart {
 			},
 		},
 	}
+
+	// We let the user choose whether to install the dependencies or not.
+	if installDependencies() {
+		// If we need to install them, we need to prepend them.
+		charts = append([]helmChart{
+			{
+				name:          "cert-manager",
+				namespace:     runtimeEnforcerE2EPrefix + "cert-manager",
+				repoLocalName: runtimeEnforcerE2EPrefix + "cert-manager-repo",
+				repoURL:       "https://charts.jetstack.io",
+				path:          "/cert-manager",
+				helmOptions: []helm.Option{
+					helm.WithArgs("--version", "v1.18.2"),
+					helm.WithArgs("--set", "installCRDs=true"),
+				},
+			},
+			{
+				name:          "cert-manager-csi-driver",
+				namespace:     runtimeEnforcerE2EPrefix + "cert-manager-csi-driver",
+				repoLocalName: runtimeEnforcerE2EPrefix + "cert-manager-csi-driver-repo",
+				repoURL:       "https://charts.jetstack.io",
+				path:          "/cert-manager-csi-driver",
+				helmOptions: []helm.Option{
+					helm.WithArgs("--version", "v0.12.0"),
+				},
+			},
+		}, charts...)
+	}
+	return charts
 }
 
 func TestMain(m *testing.M) {
