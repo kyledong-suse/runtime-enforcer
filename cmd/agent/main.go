@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/cilium/ebpf"
 	"github.com/go-logr/logr"
 	"github.com/rancher-sandbox/runtime-enforcer/internal/bpf"
 	"github.com/rancher-sandbox/runtime-enforcer/internal/eventhandler"
@@ -140,7 +139,7 @@ func startAgent(ctx context.Context, logger *slog.Logger, config Config) error {
 	//////////////////////
 	// Create BPF manager
 	//////////////////////
-	bpfManager, err := bpf.NewManager(logger, config.enableLearning, ebpf.LogLevelBranch)
+	bpfManager, err := bpf.NewManager(logger, config.enableLearning)
 	if err != nil {
 		return fmt.Errorf("cannot create BPF manager: %w", err)
 	}
