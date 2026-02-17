@@ -68,8 +68,10 @@ spec:
           httpGet:
             path: /readyz
             port: 8081
+          # we give 45s (5s delay + 8 attempts every 5s) for the startup probe to succeed
           initialDelaySeconds: 5
-          periodSeconds: 3
+          periodSeconds: 5
+          failureThreshold: 8
         resources: {{- toYaml .Values.agent.agent.resources | nindent 10 }}
         securityContext: {{- toYaml .Values.agent.agent.containerSecurityContext | nindent 10 }}
         volumeMounts:
