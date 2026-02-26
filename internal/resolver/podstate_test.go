@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPodState(t *testing.T) {
+func TestPodEntry(t *testing.T) {
 	// Test the podInfo struct and its methods here
 	namespace := "test-namespace"
 	name := "test-name"
@@ -18,7 +18,7 @@ func TestPodState(t *testing.T) {
 		v1alpha1.PolicyLabelKey: policyName,
 	}
 
-	podState := &podState{
+	podEntry := &podEntry{
 		info: &podInfo{
 			namespace: namespace,
 			name:      name,
@@ -32,11 +32,11 @@ func TestPodState(t *testing.T) {
 		},
 	}
 
-	require.Equal(t, name, podState.podName())
-	require.Equal(t, namespace, podState.podNamespace())
-	require.True(t, podState.matchPolicy(policyName, namespace))
+	require.Equal(t, name, podEntry.podName())
+	require.Equal(t, namespace, podEntry.podNamespace())
+	require.True(t, podEntry.matchPolicy(policyName, namespace))
 	// same name but another namespace.
-	require.False(t, podState.matchPolicy(policyName, "random-namespace"))
+	require.False(t, podEntry.matchPolicy(policyName, "random-namespace"))
 	// same namespace but different name.
-	require.False(t, podState.matchPolicy("random-name", namespace))
+	require.False(t, podEntry.matchPolicy("random-name", namespace))
 }

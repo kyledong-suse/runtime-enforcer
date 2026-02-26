@@ -18,25 +18,25 @@ type podInfo struct {
 	labels       Labels
 }
 
-// podState is the internal representation of a pod inside our cache.
-type podState struct {
+// podEntry is the internal representation of a pod inside our cache.
+type podEntry struct {
 	info       *podInfo
 	containers map[ContainerID]*containerInfo
 }
 
-func (pod *podState) matchPolicy(policyName, policyNamespace string) bool {
+func (pod *podEntry) matchPolicy(policyName, policyNamespace string) bool {
 	// now we need to check if the pod is in the same namespace of the policy since our policies are namespaced.
 	return pod.policyName() == policyName && pod.podNamespace() == policyNamespace
 }
 
-func (pod *podState) policyName() string {
+func (pod *podEntry) policyName() string {
 	return pod.info.labels[v1alpha1.PolicyLabelKey]
 }
 
-func (pod *podState) podName() string {
+func (pod *podEntry) podName() string {
 	return pod.info.name
 }
 
-func (pod *podState) podNamespace() string {
+func (pod *podEntry) podNamespace() string {
 	return pod.info.namespace
 }

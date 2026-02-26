@@ -74,7 +74,7 @@ func (r *Resolver) clearPolicyIDFromBPF(policyID PolicyID) error {
 
 // applyPolicyToPod applies the given policy-by-container (add/update) to the pod's cgroups.
 // This must be called with the resolver lock held.
-func (r *Resolver) applyPolicyToPod(state *podState, applied policyByContainer) error {
+func (r *Resolver) applyPolicyToPod(state *podEntry, applied policyByContainer) error {
 	for _, container := range state.containers {
 		polID, ok := applied[container.name]
 		if !ok {
@@ -94,10 +94,10 @@ func (r *Resolver) applyPolicyToPod(state *podState, applied policyByContainer) 
 // This must be called with the resolver lock held.
 func (r *Resolver) removePolicyFromPod(
 	wpKey NamespacedPolicyName,
-	podState *podState,
+	podEntry *podEntry,
 	wpState, removed policyByContainer,
 ) error {
-	for _, container := range podState.containers {
+	for _, container := range podEntry.containers {
 		policyID, ok := removed[container.name]
 		if !ok {
 			continue
@@ -106,7 +106,7 @@ func (r *Resolver) removePolicyFromPod(
 			PolicyIDNone, []CgroupID{container.cgID}, bpf.RemoveCgroups,
 		); err != nil {
 			return fmt.Errorf("failed to remove cgroups for pod %s, container %s, policy %s: %w",
-				podState.podName(), container.name, podState.policyName(), err)
+				podEntry.podName(), container.name, podEntry.policyName(), err)
 		}
 		if err := r.clearPolicyIDFromBPF(policyID); err != nil {
 			return fmt.Errorf("failed to clear policy for wp %s, container %s: %w", wpKey, container.name, err)
@@ -117,7 +117,7 @@ func (r *Resolver) removePolicyFromPod(
 }
 
 // this must be called with the resolver lock held.
-func (r *Resolver) applyPolicyToPodIfPresent(state *podState) error {
+func (r *Resolver) applyPolicyToPodIfPresent(state *podEntry) error {
 	policyName := state.policyName()
 
 	// if the policy doesn't have the label we do nothing
@@ -206,12 +206,12 @@ func (r *Resolver) handleWPAdd(wp *v1alpha1.WorkloadPolicy) error {
 	}
 
 	// Now we search for pods that match the policy
-	for _, podState := range r.podCache {
-		if !podState.matchPolicy(wp.Name, wp.Namespace) {
+	for _, podEntry := range r.podCache {
+		if !podEntry.matchPolicy(wp.Name, wp.Namespace) {
 			continue
 		}
 
-		if err = r.applyPolicyToPod(podState, state); err != nil {
+		if err = r.applyPolicyToPod(podEntry, state); err != nil {
 			return err
 		}
 	}
@@ -265,14 +265,14 @@ func (r *Resolver) handleWPUpdate(wp *v1alpha1.WorkloadPolicy) error {
 		}
 	}
 
-	for _, podState := range r.podCache {
-		if !podState.matchPolicy(wp.Name, wp.Namespace) {
+	for _, podEntry := range r.podCache {
+		if !podEntry.matchPolicy(wp.Name, wp.Namespace) {
 			continue
 		}
-		if err = r.removePolicyFromPod(wpKey, podState, info.polByContainer, removedMap); err != nil {
+		if err = r.removePolicyFromPod(wpKey, podEntry, info.polByContainer, removedMap); err != nil {
 			return err
 		}
-		if err = r.applyPolicyToPod(podState, appliedMap); err != nil {
+		if err = r.applyPolicyToPod(podEntry, appliedMap); err != nil {
 			return err
 		}
 	}

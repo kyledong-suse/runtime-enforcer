@@ -25,8 +25,8 @@ type PodData struct {
 	Containers   map[ContainerID]*ContainerData
 }
 
-func convertPodData(data *PodData) *podState {
-	return &podState{
+func convertPodData(data *PodData) *podEntry {
+	return &podEntry{
 		info: &podInfo{
 			podID:        data.UID,
 			name:         data.Name,

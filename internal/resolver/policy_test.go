@@ -79,7 +79,7 @@ func TestHandleWP_Lifecycle(t *testing.T) {
 	// A matching pod is required because policy deletion now happens
 	// during cgroup detachment, not purely from wpState transitions.
 	r.mu.Lock()
-	r.podCache["test-pod-uid"] = &podState{
+	r.podCache["test-pod-uid"] = &podEntry{
 		info: &podInfo{
 			podID:        "test-pod-uid",
 			namespace:    "test-ns",
