@@ -17,8 +17,14 @@ spec:
     metadata:
       labels:
       {{- include "runtime-enforcer.agent.labelSelector" . | nindent 8 }}
+      {{- with .Values.agent.podLabels }}
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
       annotations:
         kubectl.kubernetes.io/default-container: agent
+      {{- with .Values.agent.podAnnotations }}
+      {{- toYaml . | nindent 8 }}
+      {{- end }}
     spec:
       {{- if .Values.priorityClass.name }}
       priorityClassName: {{ .Values.priorityClass.name }}
@@ -49,6 +55,9 @@ spec:
         command:
         - /agent
         env:
+        {{- with .Values.agent.agent.env }}
+        {{- toYaml . | nindent 10 }}
+        {{- end }}
           - name: NODE_NAME
             valueFrom:
               fieldRef:
@@ -99,6 +108,14 @@ spec:
       terminationGracePeriodSeconds: 10
       {{- with .Values.agent.tolerations }}
       tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.agent.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.agent.affinity }}
+      affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
