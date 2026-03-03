@@ -67,6 +67,15 @@ spec:
         configMap:
           name: {{ include "runtime-enforcer.fullname" . }}-otel-collector
       - name: otel-collector-tls
-        secret:
-          secretName: {{ include "runtime-enforcer.otelCollector.certSecretName" . }}
+        csi:
+          driver: "csi.cert-manager.io"
+          readOnly: true
+          volumeAttributes:
+            csi.cert-manager.io/issuer-name: {{ include "runtime-enforcer.caIssuerName" . }}
+            csi.cert-manager.io/issuer-kind: Issuer
+            csi.cert-manager.io/dns-names: >-
+              {{ include "runtime-enforcer.fullname" . }}-otel-collector,
+              {{ include "runtime-enforcer.fullname" . }}-otel-collector.{{ .Release.Namespace }},
+              {{ include "runtime-enforcer.fullname" . }}-otel-collector.{{ .Release.Namespace }}.svc,
+              {{ include "runtime-enforcer.fullname" . }}-otel-collector.{{ .Release.Namespace }}.svc.cluster.local
 {{- end }}
