@@ -172,9 +172,7 @@ func (r *WorkloadPolicyStatusSync) sync(
 				Code:    v1alpha1.NodeIssueMissingPolicy,
 				Message: fmt.Sprintf("cannot list node policies: %v", err),
 			}
-		}
-
-		if len(policies) == 0 {
+		} else if len(policies) == 0 {
 			// if there are no policies for this pod we have an error because in previous steps
 			// we checked that we have policies deployed in the cluster.
 			r.logger.Error(errors.New("empty policy list"), "No policies found", "pod", pod.Name)
