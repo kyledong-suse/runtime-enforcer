@@ -161,3 +161,94 @@ tests:
     asserts:
       - notExists:
           path: spec.template.spec.affinity
+
+  - it: "should set OTEL env vars to built-in collector when violations collector is enabled"
+    set:
+      telemetry:
+        violations:
+          collector:
+            enabled: true
+    asserts:
+      - contains:
+          path: "spec.template.spec.containers[0].env"
+          content:
+            name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: "https://RELEASE-NAME-runtime-enforcer-otel-collector.NAMESPACE.svc.cluster.local:4317"
+      - contains:
+          path: "spec.template.spec.containers[0].env"
+          content:
+            name: OTEL_EXPORTER_OTLP_CERTIFICATE
+            value: "/etc/runtime-enforcer/certs/ca.crt"
+
+  - it: "should set OTEL env vars to custom endpoint when collector is disabled and tracing is enabled"
+    set:
+      telemetry:
+        tracing: true
+        mode: custom
+        violations:
+          collector:
+            enabled: false
+        custom:
+          endpoint: "https://my-collector:4317"
+          insecure: false
+    asserts:
+      - contains:
+          path: "spec.template.spec.containers[0].env"
+          content:
+            name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: "https://my-collector:4317"
+      - contains:
+          path: "spec.template.spec.containers[0].env"
+          content:
+            name: OTEL_EXPORTER_OTLP_INSECURE
+            value: "false"
+
+  - it: "should set OTEL env vars to custom endpoint when collector is disabled and metrics is enabled"
+    set:
+      telemetry:
+        metrics: true
+        mode: custom
+        violations:
+          collector:
+            enabled: false
+        custom:
+          endpoint: "https://my-collector:4317"
+          insecure: false
+    asserts:
+      - contains:
+          path: "spec.template.spec.containers[0].env"
+          content:
+            name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: "https://my-collector:4317"
+
+  - it: "should not set OTEL env vars when collector is disabled and no tracing/metrics"
+    set:
+      telemetry:
+        tracing: false
+        metrics: false
+        violations:
+          collector:
+            enabled: false
+    asserts:
+      - notContains:
+          path: "spec.template.spec.containers[0].env"
+          content:
+            name: OTEL_EXPORTER_OTLP_ENDPOINT
+          any: true
+
+  - it: "should prefer collector env vars over custom when collector is enabled"
+    set:
+      telemetry:
+        tracing: true
+        mode: custom
+        violations:
+          collector:
+            enabled: true
+        custom:
+          endpoint: "https://my-collector:4317"
+    asserts:
+      - contains:
+          path: "spec.template.spec.containers[0].env"
+          content:
+            name: OTEL_EXPORTER_OTLP_ENDPOINT
+            value: "https://RELEASE-NAME-runtime-enforcer-otel-collector.NAMESPACE.svc.cluster.local:4317"

@@ -101,10 +101,10 @@ agent:
   resources:
     limits:
       cpu: 500m
-      memory: 128Mi
+      memory: 256Mi
     requests:
       cpu: 500m
-      memory: 128Mi
+      memory: 256Mi
   hostPID: true
   # The podSecurityContext used by agent
   # @schema additionalProperties:true
@@ -167,6 +167,21 @@ telemetry:
   # telemetry.tracing is used to enable/disable the tracing collection and
   # exportation to the OpenTelemetry collector.
   tracing: false
+
+  violations:
+    collector:
+      enabled: true
+      image:
+        repository: otel/opentelemetry-collector-contrib
+        tag: "0.145.0"
+        pullPolicy: IfNotPresent
+      resources:
+        limits:
+          cpu: 250m
+          memory: 128Mi
+        requests:
+          cpu: 10m
+          memory: 64Mi
 
   # The following settings are mandatory to configure the OpenTelemetry
   # exporter in the controller and policy server to send metrics and traces to

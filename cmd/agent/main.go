@@ -6,35 +6,36 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
 
 	"github.com/go-logr/logr"
+
+	securityv1alpha1 "github.com/rancher-sandbox/runtime-enforcer/api/v1alpha1"
 	"github.com/rancher-sandbox/runtime-enforcer/internal/bpf"
 	"github.com/rancher-sandbox/runtime-enforcer/internal/eventhandler"
+	"github.com/rancher-sandbox/runtime-enforcer/internal/events"
 	"github.com/rancher-sandbox/runtime-enforcer/internal/eventscraper"
 	"github.com/rancher-sandbox/runtime-enforcer/internal/grpcexporter"
 	"github.com/rancher-sandbox/runtime-enforcer/internal/nri"
 	"github.com/rancher-sandbox/runtime-enforcer/internal/resolver"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
-	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/manager"
 
-	securityv1alpha1 "github.com/rancher-sandbox/runtime-enforcer/api/v1alpha1"
 	"github.com/rancher-sandbox/runtime-enforcer/internal/traces"
-	"k8s.io/api/node/v1alpha1"
+	"github.com/rancher-sandbox/runtime-enforcer/internal/violationbuf"
+	otellog "go.opentelemetry.io/otel/log"
+	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-
-	"log/slog"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
 )
 
 type Config struct {
 	enableTracing             bool
-	enableOtelSidecar         bool
 	enableLearning            bool
 	learningNamespaceSelector string
 	nriSocketPath             string
@@ -42,13 +43,16 @@ type Config struct {
 	probeAddr                 string
 	grpcConf                  grpcexporter.Config
 	logLevel                  string
+	violationOTLPEndpoint     string
+	violationOTLPCACert       string
+	nodeName                  string
+	violationLogger           otellog.Logger
 }
 
 // +kubebuilder:rbac:groups=security.rancher.io,resources=workloadpolicies,verbs=get;list;watch
 
 func newControllerManager(config Config) (manager.Manager, error) {
 	scheme := runtime.NewScheme()
-	utilruntime.Must(v1alpha1.AddToScheme(scheme))
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(securityv1alpha1.AddToScheme(scheme))
 	controllerOptions := ctrl.Options{
@@ -67,8 +71,9 @@ func setupGRPCExporter(
 	logger *slog.Logger,
 	conf *grpcexporter.Config,
 	r *resolver.Resolver,
+	violationBuffer *violationbuf.Buffer,
 ) error {
-	exporter, err := grpcexporter.New(logger, conf, r)
+	exporter, err := grpcexporter.New(logger, conf, r, violationBuffer)
 	if err != nil {
 		return fmt.Errorf("failed to create gRPC exporter: %w", err)
 	}
@@ -207,14 +212,25 @@ func startAgent(ctx context.Context, logger *slog.Logger, config Config) error {
 	}
 
 	//////////////////////
+	// Create the violation buffer
+	//////////////////////
+	violationBuffer := violationbuf.NewBuffer()
+
+	//////////////////////
 	// Create the scraper
 	//////////////////////
+	var scraperOpts []eventscraper.Option
+	if config.violationLogger != nil {
+		scraperOpts = append(scraperOpts, eventscraper.WithViolationLogger(config.violationLogger, config.nodeName))
+	}
+	scraperOpts = append(scraperOpts, eventscraper.WithViolationBuffer(violationBuffer, config.nodeName))
 	evtScraper := eventscraper.NewEventScraper(
 		bpfManager.GetLearningChannel(),
 		bpfManager.GetMonitoringChannel(),
 		logger,
 		resolver,
 		enqueueFunc,
+		scraperOpts...,
 	)
 	if err = ctrlMgr.Add(evtScraper); err != nil {
 		return fmt.Errorf("failed to add event scraper to controller manager: %w", err)
@@ -230,7 +246,7 @@ func startAgent(ctx context.Context, logger *slog.Logger, config Config) error {
 	//////////////////////
 	// Add GRPC exporter
 	//////////////////////
-	if err = setupGRPCExporter(ctrlMgr, logger, &config.grpcConf, resolver); err != nil {
+	if err = setupGRPCExporter(ctrlMgr, logger, &config.grpcConf, resolver, violationBuffer); err != nil {
 		return err
 	}
 
@@ -281,7 +297,6 @@ func main() {
 	ctx := ctrl.SetupSignalHandler()
 
 	flag.BoolVar(&config.enableTracing, "enable-tracing", false, "Enable tracing collection")
-	flag.BoolVar(&config.enableOtelSidecar, "enable-otel-sidecar", false, "Enable OpenTelemetry sidecar")
 	flag.BoolVar(&config.enableLearning, "enable-learning", false, "Enable learning mode")
 	flag.StringVar(
 		&config.learningNamespaceSelector,
@@ -303,6 +318,20 @@ func main() {
 		"info",
 		"agent logger level (debug, info, warn, error)",
 	)
+	flag.StringVar(
+		&config.violationOTLPEndpoint,
+		"violation-otlp-endpoint",
+		os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+		"OTLP gRPC endpoint for violation event reporting (defaults to OTEL_EXPORTER_OTLP_ENDPOINT env var, empty = disabled)",
+	)
+	flag.StringVar(
+		&config.violationOTLPCACert,
+		"violation-otlp-ca-cert",
+		os.Getenv("OTEL_EXPORTER_OTLP_CERTIFICATE"),
+		"Path to the CA certificate for verifying the OTLP collector's TLS certificate (defaults to OTEL_EXPORTER_OTLP_CERTIFICATE env var)",
+	)
+	flag.StringVar(&config.nodeName, "node-name", os.Getenv("NODE_NAME"),
+		"Node name for violation reporting (defaults to NODE_NAME env var)")
 	flag.Parse()
 
 	slogHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: parseLogLevel(config.logLevel)})
@@ -319,6 +348,18 @@ func main() {
 		}
 	}
 
+	var eventShutdown func(context.Context) error
+	if config.violationOTLPEndpoint != "" {
+		var violationLogger otellog.Logger
+		violationLogger, eventShutdown, err = events.Init(ctx, config.violationOTLPEndpoint, config.violationOTLPCACert)
+		if err != nil {
+			slogger.ErrorContext(ctx, "failed to initiate violation event pipeline", "error", err)
+			os.Exit(1)
+		}
+		config.violationLogger = violationLogger
+		slogger.InfoContext(ctx, "violation event reporting enabled", "endpoint", config.violationOTLPEndpoint)
+	}
+
 	// This function blocks if everything is alright.
 	if err = startAgent(ctx, slogger, config); err != nil {
 		slogger.ErrorContext(ctx, "failed to start agent", "error", err)
@@ -328,6 +369,12 @@ func main() {
 	if traceShutdown != nil {
 		if err = traceShutdown(ctx); err != nil {
 			slogger.ErrorContext(ctx, "failed to shutdown telemetry trace", "error", err)
+		}
+	}
+
+	if eventShutdown != nil {
+		if err = eventShutdown(ctx); err != nil {
+			slogger.ErrorContext(ctx, "failed to shutdown violation event pipeline", "error", err)
 		}
 	}
 }

@@ -12,6 +12,8 @@ import (
 	pb "github.com/rancher-sandbox/runtime-enforcer/proto/agent/v1"
 
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -170,9 +172,7 @@ func (r *WorkloadPolicyStatusSync) sync(
 				Code:    v1alpha1.NodeIssueMissingPolicy,
 				Message: fmt.Sprintf("cannot list node policies: %v", err),
 			}
-		}
-
-		if len(policies) == 0 {
+		} else if len(policies) == 0 {
 			// if there are no policies for this pod we have an error because in previous steps
 			// we checked that we have policies deployed in the cluster.
 			r.logger.Error(errors.New("empty policy list"), "No policies found", "pod", pod.Name)
@@ -187,9 +187,12 @@ func (r *WorkloadPolicyStatusSync) sync(
 		}
 	}
 
+	violationsByPolicy := r.getViolationsByPolicy(ctx, nodesInfo)
+
 	// Now we iterate over all WSPs and update their status based on the collected policies status from the agents
 	for _, wp := range wpList.Items {
-		err := r.processWorkloadPolicy(ctx, &wp, nodesInfo)
+		namespacedName := types.NamespacedName{Namespace: wp.Namespace, Name: wp.Name}
+		err := r.processWorkloadPolicy(ctx, &wp, nodesInfo, violationsByPolicy[namespacedName])
 		if err != nil {
 			r.logger.Error(
 				err,
@@ -200,4 +203,55 @@ func (r *WorkloadPolicyStatusSync) sync(
 	}
 
 	return nil
+}
+
+// getViolationsByPolicy gets all the violations for a single policy.
+func (r *WorkloadPolicyStatusSync) getViolationsByPolicy(
+	ctx context.Context,
+	nodesInfo nodesInfoMap,
+) map[types.NamespacedName][]v1alpha1.ViolationRecord {
+	violationsByPolicy := make(map[types.NamespacedName][]v1alpha1.ViolationRecord)
+	for nodeName, info := range nodesInfo {
+		if info.issue.Code != v1alpha1.NodeIssueNone {
+			continue
+		}
+		agentClient, nodeReady := r.conns[nodeName]
+		if !nodeReady {
+			continue
+		}
+		pbViolations, err := agentClient.scrapeViolations(ctx)
+		if err != nil {
+			r.logger.Error(err, "failed to scrape violations", "node", nodeName)
+			continue
+		}
+		for _, v := range pbViolations {
+			namespacedName, parseErr := parsePolicyNamespacedName(v.GetPolicyName())
+			if parseErr != nil {
+				r.logger.Error(parseErr, "skipping violation record", "node", nodeName)
+				continue
+			}
+			rec := v1alpha1.ViolationRecord{
+				Timestamp:      metav1.NewTime(v.GetTimestamp().AsTime()),
+				PodName:        v.GetPodName(),
+				ContainerName:  v.GetContainerName(),
+				ExecutablePath: v.GetExecutablePath(),
+				NodeName:       v.GetNodeName(),
+				Action:         v.GetAction(),
+			}
+			violationsByPolicy[namespacedName] = append(violationsByPolicy[namespacedName], rec)
+		}
+	}
+
+	return violationsByPolicy
+}
+
+// parsePolicyNamespacedName parses a "namespace/name" string into a NamespacedName.
+// It returns an error if the string is not in the expected format, since all
+// policies are namespaced resources.
+func parsePolicyNamespacedName(s string) (types.NamespacedName, error) {
+	parts := strings.SplitN(s, "/", 2) //nolint:mnd // namespace/name pair
+	if len(parts) != 2 {               //nolint:mnd // namespace/name pair
+		return types.NamespacedName{}, fmt.Errorf("invalid policy name %q: expected namespace/name format", s)
+	}
+	return types.NamespacedName{Namespace: parts[0], Name: parts[1]}, nil
 }

@@ -21,6 +21,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	AgentObserver_ListPoliciesStatus_FullMethodName = "/runtimeenforcer.agent.v1.AgentObserver/ListPoliciesStatus"
 	AgentObserver_ListPodCache_FullMethodName       = "/runtimeenforcer.agent.v1.AgentObserver/ListPodCache"
+	AgentObserver_ScrapeViolations_FullMethodName   = "/runtimeenforcer.agent.v1.AgentObserver/ScrapeViolations"
 )
 
 // AgentObserverClient is the client API for AgentObserver service.
@@ -33,6 +34,9 @@ type AgentObserverClient interface {
 	ListPoliciesStatus(ctx context.Context, in *ListPoliciesStatusRequest, opts ...grpc.CallOption) (*ListPoliciesStatusResponse, error)
 	// ListPodCache returns the current pod cache.
 	ListPodCache(ctx context.Context, in *ListPodCacheRequest, opts ...grpc.CallOption) (*ListPodCacheResponse, error)
+	// ScrapeViolations drains the agent's in-memory violation buffer and
+	// returns all accumulated records since the last scrape.
+	ScrapeViolations(ctx context.Context, in *ScrapeViolationsRequest, opts ...grpc.CallOption) (*ScrapeViolationsResponse, error)
 }
 
 type agentObserverClient struct {
@@ -63,6 +67,16 @@ func (c *agentObserverClient) ListPodCache(ctx context.Context, in *ListPodCache
 	return out, nil
 }
 
+func (c *agentObserverClient) ScrapeViolations(ctx context.Context, in *ScrapeViolationsRequest, opts ...grpc.CallOption) (*ScrapeViolationsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ScrapeViolationsResponse)
+	err := c.cc.Invoke(ctx, AgentObserver_ScrapeViolations_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AgentObserverServer is the server API for AgentObserver service.
 // All implementations must embed UnimplementedAgentObserverServer
 // for forward compatibility.
@@ -73,6 +87,9 @@ type AgentObserverServer interface {
 	ListPoliciesStatus(context.Context, *ListPoliciesStatusRequest) (*ListPoliciesStatusResponse, error)
 	// ListPodCache returns the current pod cache.
 	ListPodCache(context.Context, *ListPodCacheRequest) (*ListPodCacheResponse, error)
+	// ScrapeViolations drains the agent's in-memory violation buffer and
+	// returns all accumulated records since the last scrape.
+	ScrapeViolations(context.Context, *ScrapeViolationsRequest) (*ScrapeViolationsResponse, error)
 	mustEmbedUnimplementedAgentObserverServer()
 }
 
@@ -88,6 +105,9 @@ func (UnimplementedAgentObserverServer) ListPoliciesStatus(context.Context, *Lis
 }
 func (UnimplementedAgentObserverServer) ListPodCache(context.Context, *ListPodCacheRequest) (*ListPodCacheResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPodCache not implemented")
+}
+func (UnimplementedAgentObserverServer) ScrapeViolations(context.Context, *ScrapeViolationsRequest) (*ScrapeViolationsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ScrapeViolations not implemented")
 }
 func (UnimplementedAgentObserverServer) mustEmbedUnimplementedAgentObserverServer() {}
 func (UnimplementedAgentObserverServer) testEmbeddedByValue()                       {}
@@ -146,6 +166,24 @@ func _AgentObserver_ListPodCache_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentObserver_ScrapeViolations_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ScrapeViolationsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentObserverServer).ScrapeViolations(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentObserver_ScrapeViolations_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentObserverServer).ScrapeViolations(ctx, req.(*ScrapeViolationsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AgentObserver_ServiceDesc is the grpc.ServiceDesc for AgentObserver service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -160,6 +198,10 @@ var AgentObserver_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListPodCache",
 			Handler:    _AgentObserver_ListPodCache_Handler,
+		},
+		{
+			MethodName: "ScrapeViolations",
+			Handler:    _AgentObserver_ScrapeViolations_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
