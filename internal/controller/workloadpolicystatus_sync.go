@@ -69,7 +69,7 @@ func NewWorkloadPolicyStatusSync(
 	labels := strings.Split(config.AgentLabelSelector, ",")
 	for _, label := range labels {
 		parts := strings.Split(label, "=")
-		if len(parts) != 2 { //nolint:mnd
+		if len(parts) != 2 { //nolint:mnd // label is composed of 2 parts
 			return nil, fmt.Errorf("label should be in the format 'key=value': %s. Invalid selector %s",
 				label,
 				config.AgentLabelSelector)
@@ -249,8 +249,8 @@ func (r *WorkloadPolicyStatusSync) getViolationsByPolicy(
 // It returns an error if the string is not in the expected format, since all
 // policies are namespaced resources.
 func parsePolicyNamespacedName(s string) (types.NamespacedName, error) {
-	parts := strings.SplitN(s, "/", 2) //nolint:mnd
-	if len(parts) != 2 {               //nolint:mnd
+	parts := strings.SplitN(s, "/", 2) //nolint:mnd // namespace/name pair
+	if len(parts) != 2 {               //nolint:mnd // namespace/name pair
 		return types.NamespacedName{}, fmt.Errorf("invalid policy name %q: expected namespace/name format", s)
 	}
 	return types.NamespacedName{Namespace: parts[0], Name: parts[1]}, nil

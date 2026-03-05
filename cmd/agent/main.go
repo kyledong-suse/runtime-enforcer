@@ -321,11 +321,15 @@ func main() {
 	flag.StringVar(
 		&config.violationOTLPEndpoint,
 		"violation-otlp-endpoint",
-		"",
-		"OTLP gRPC endpoint for violation event reporting (e.g. collector service or third-party collector, empty = disabled)",
+		os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT"),
+		"OTLP gRPC endpoint for violation event reporting (defaults to OTEL_EXPORTER_OTLP_ENDPOINT env var, empty = disabled)",
 	)
-	flag.StringVar(&config.violationOTLPCACert, "violation-otlp-ca-cert", "",
-		"Path to the CA certificate for verifying the OTLP collector's TLS certificate")
+	flag.StringVar(
+		&config.violationOTLPCACert,
+		"violation-otlp-ca-cert",
+		os.Getenv("OTEL_EXPORTER_OTLP_CERTIFICATE"),
+		"Path to the CA certificate for verifying the OTLP collector's TLS certificate (defaults to OTEL_EXPORTER_OTLP_CERTIFICATE env var)",
+	)
 	flag.StringVar(&config.nodeName, "node-name", os.Getenv("NODE_NAME"),
 		"Node name for violation reporting (defaults to NODE_NAME env var)")
 	flag.Parse()

@@ -49,10 +49,6 @@ spec:
         - --grpc-port={{ .Values.agent.grpcExporterPort }}
         - --grpc-mtls-cert-dir={{ include "runtime-enforcer.grpc.certDir" . }}
         - --log-level={{ .Values.agent.logLevel }}
-        {{- if .Values.telemetry.violations.collector.enabled }}
-        - --violation-otlp-endpoint={{ include "runtime-enforcer.fullname" . }}-otel-collector.{{ .Release.Namespace }}.svc.cluster.local:4317
-        - --violation-otlp-ca-cert={{ include "runtime-enforcer.grpc.certDir" . }}/ca.crt
-        {{- end }}
         {{- toYaml .Values.agent.args | nindent 8 }}
         command:
         - /agent
