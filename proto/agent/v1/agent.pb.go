@@ -123,6 +123,285 @@ func (PolicyMode) EnumDescriptor() ([]byte, []int) {
 	return file_proto_agent_v1_agent_proto_rawDescGZIP(), []int{1}
 }
 
+type ContainerMeta struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ID            string                 `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=Name,proto3" json:"Name,omitempty"`
+	CgroupID      uint64                 `protobuf:"varint,3,opt,name=CgroupID,proto3" json:"CgroupID,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ContainerMeta) Reset() {
+	*x = ContainerMeta{}
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[0]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ContainerMeta) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ContainerMeta) ProtoMessage() {}
+
+func (x *ContainerMeta) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[0]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ContainerMeta.ProtoReflect.Descriptor instead.
+func (*ContainerMeta) Descriptor() ([]byte, []int) {
+	return file_proto_agent_v1_agent_proto_rawDescGZIP(), []int{0}
+}
+
+func (x *ContainerMeta) GetID() string {
+	if x != nil {
+		return x.ID
+	}
+	return ""
+}
+
+func (x *ContainerMeta) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *ContainerMeta) GetCgroupID() uint64 {
+	if x != nil {
+		return x.CgroupID
+	}
+	return 0
+}
+
+type PodMeta struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ID            string                 `protobuf:"bytes,1,opt,name=ID,proto3" json:"ID,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=Name,proto3" json:"Name,omitempty"`
+	Namespace     string                 `protobuf:"bytes,3,opt,name=Namespace,proto3" json:"Namespace,omitempty"`
+	WorkloadName  string                 `protobuf:"bytes,4,opt,name=WorkloadName,proto3" json:"WorkloadName,omitempty"`
+	WorkloadType  string                 `protobuf:"bytes,5,opt,name=WorkloadType,proto3" json:"WorkloadType,omitempty"`
+	Labels        map[string]string      `protobuf:"bytes,6,rep,name=Labels,proto3" json:"Labels,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PodMeta) Reset() {
+	*x = PodMeta{}
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PodMeta) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PodMeta) ProtoMessage() {}
+
+func (x *PodMeta) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PodMeta.ProtoReflect.Descriptor instead.
+func (*PodMeta) Descriptor() ([]byte, []int) {
+	return file_proto_agent_v1_agent_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *PodMeta) GetID() string {
+	if x != nil {
+		return x.ID
+	}
+	return ""
+}
+
+func (x *PodMeta) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *PodMeta) GetNamespace() string {
+	if x != nil {
+		return x.Namespace
+	}
+	return ""
+}
+
+func (x *PodMeta) GetWorkloadName() string {
+	if x != nil {
+		return x.WorkloadName
+	}
+	return ""
+}
+
+func (x *PodMeta) GetWorkloadType() string {
+	if x != nil {
+		return x.WorkloadType
+	}
+	return ""
+}
+
+func (x *PodMeta) GetLabels() map[string]string {
+	if x != nil {
+		return x.Labels
+	}
+	return nil
+}
+
+type PodView struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Meta  *PodMeta               `protobuf:"bytes,1,opt,name=meta,proto3" json:"meta,omitempty"`
+	// The key is the container ID
+	Containers    map[string]*ContainerMeta `protobuf:"bytes,2,rep,name=containers,proto3" json:"containers,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PodView) Reset() {
+	*x = PodView{}
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PodView) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PodView) ProtoMessage() {}
+
+func (x *PodView) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PodView.ProtoReflect.Descriptor instead.
+func (*PodView) Descriptor() ([]byte, []int) {
+	return file_proto_agent_v1_agent_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *PodView) GetMeta() *PodMeta {
+	if x != nil {
+		return x.Meta
+	}
+	return nil
+}
+
+func (x *PodView) GetContainers() map[string]*ContainerMeta {
+	if x != nil {
+		return x.Containers
+	}
+	return nil
+}
+
+// ListPodCacheRequest is the request for listing the pod cache.
+type ListPodCacheRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPodCacheRequest) Reset() {
+	*x = ListPodCacheRequest{}
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPodCacheRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPodCacheRequest) ProtoMessage() {}
+
+func (x *ListPodCacheRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPodCacheRequest.ProtoReflect.Descriptor instead.
+func (*ListPodCacheRequest) Descriptor() ([]byte, []int) {
+	return file_proto_agent_v1_agent_proto_rawDescGZIP(), []int{3}
+}
+
+// ListPodCacheResponse is the response containing the pod cache.
+type ListPodCacheResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Pods          []*PodView             `protobuf:"bytes,1,rep,name=pods,proto3" json:"pods,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListPodCacheResponse) Reset() {
+	*x = ListPodCacheResponse{}
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListPodCacheResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListPodCacheResponse) ProtoMessage() {}
+
+func (x *ListPodCacheResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListPodCacheResponse.ProtoReflect.Descriptor instead.
+func (*ListPodCacheResponse) Descriptor() ([]byte, []int) {
+	return file_proto_agent_v1_agent_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *ListPodCacheResponse) GetPods() []*PodView {
+	if x != nil {
+		return x.Pods
+	}
+	return nil
+}
+
 type ListPoliciesStatusRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	unknownFields protoimpl.UnknownFields
@@ -131,7 +410,7 @@ type ListPoliciesStatusRequest struct {
 
 func (x *ListPoliciesStatusRequest) Reset() {
 	*x = ListPoliciesStatusRequest{}
-	mi := &file_proto_agent_v1_agent_proto_msgTypes[0]
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -143,7 +422,7 @@ func (x *ListPoliciesStatusRequest) String() string {
 func (*ListPoliciesStatusRequest) ProtoMessage() {}
 
 func (x *ListPoliciesStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_agent_v1_agent_proto_msgTypes[0]
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -156,7 +435,7 @@ func (x *ListPoliciesStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPoliciesStatusRequest.ProtoReflect.Descriptor instead.
 func (*ListPoliciesStatusRequest) Descriptor() ([]byte, []int) {
-	return file_proto_agent_v1_agent_proto_rawDescGZIP(), []int{0}
+	return file_proto_agent_v1_agent_proto_rawDescGZIP(), []int{5}
 }
 
 type PolicyStatus struct {
@@ -170,7 +449,7 @@ type PolicyStatus struct {
 
 func (x *PolicyStatus) Reset() {
 	*x = PolicyStatus{}
-	mi := &file_proto_agent_v1_agent_proto_msgTypes[1]
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -182,7 +461,7 @@ func (x *PolicyStatus) String() string {
 func (*PolicyStatus) ProtoMessage() {}
 
 func (x *PolicyStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_agent_v1_agent_proto_msgTypes[1]
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -195,7 +474,7 @@ func (x *PolicyStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PolicyStatus.ProtoReflect.Descriptor instead.
 func (*PolicyStatus) Descriptor() ([]byte, []int) {
-	return file_proto_agent_v1_agent_proto_rawDescGZIP(), []int{1}
+	return file_proto_agent_v1_agent_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *PolicyStatus) GetState() PolicyState {
@@ -228,7 +507,7 @@ type ListPoliciesStatusResponse struct {
 
 func (x *ListPoliciesStatusResponse) Reset() {
 	*x = ListPoliciesStatusResponse{}
-	mi := &file_proto_agent_v1_agent_proto_msgTypes[2]
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -240,7 +519,7 @@ func (x *ListPoliciesStatusResponse) String() string {
 func (*ListPoliciesStatusResponse) ProtoMessage() {}
 
 func (x *ListPoliciesStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_proto_agent_v1_agent_proto_msgTypes[2]
+	mi := &file_proto_agent_v1_agent_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -253,7 +532,7 @@ func (x *ListPoliciesStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPoliciesStatusResponse.ProtoReflect.Descriptor instead.
 func (*ListPoliciesStatusResponse) Descriptor() ([]byte, []int) {
-	return file_proto_agent_v1_agent_proto_rawDescGZIP(), []int{2}
+	return file_proto_agent_v1_agent_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ListPoliciesStatusResponse) GetPolicies() map[string]*PolicyStatus {
@@ -267,7 +546,32 @@ var File_proto_agent_v1_agent_proto protoreflect.FileDescriptor
 
 const file_proto_agent_v1_agent_proto_rawDesc = "" +
 	"\n" +
-	"\x1aproto/agent/v1/agent.proto\x12\x18runtimeenforcer.agent.v1\"\x1b\n" +
+	"\x1aproto/agent/v1/agent.proto\x12\x18runtimeenforcer.agent.v1\"O\n" +
+	"\rContainerMeta\x12\x0e\n" +
+	"\x02ID\x18\x01 \x01(\tR\x02ID\x12\x12\n" +
+	"\x04Name\x18\x02 \x01(\tR\x04Name\x12\x1a\n" +
+	"\bCgroupID\x18\x03 \x01(\x04R\bCgroupID\"\x95\x02\n" +
+	"\aPodMeta\x12\x0e\n" +
+	"\x02ID\x18\x01 \x01(\tR\x02ID\x12\x12\n" +
+	"\x04Name\x18\x02 \x01(\tR\x04Name\x12\x1c\n" +
+	"\tNamespace\x18\x03 \x01(\tR\tNamespace\x12\"\n" +
+	"\fWorkloadName\x18\x04 \x01(\tR\fWorkloadName\x12\"\n" +
+	"\fWorkloadType\x18\x05 \x01(\tR\fWorkloadType\x12E\n" +
+	"\x06Labels\x18\x06 \x03(\v2-.runtimeenforcer.agent.v1.PodMeta.LabelsEntryR\x06Labels\x1a9\n" +
+	"\vLabelsEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xfb\x01\n" +
+	"\aPodView\x125\n" +
+	"\x04meta\x18\x01 \x01(\v2!.runtimeenforcer.agent.v1.PodMetaR\x04meta\x12Q\n" +
+	"\n" +
+	"containers\x18\x02 \x03(\v21.runtimeenforcer.agent.v1.PodView.ContainersEntryR\n" +
+	"containers\x1af\n" +
+	"\x0fContainersEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12=\n" +
+	"\x05value\x18\x02 \x01(\v2'.runtimeenforcer.agent.v1.ContainerMetaR\x05value:\x028\x01\"\x15\n" +
+	"\x13ListPodCacheRequest\"M\n" +
+	"\x14ListPodCacheResponse\x125\n" +
+	"\x04pods\x18\x01 \x03(\v2!.runtimeenforcer.agent.v1.PodViewR\x04pods\"\x1b\n" +
 	"\x19ListPoliciesStatusRequest\"\x9f\x01\n" +
 	"\fPolicyStatus\x12;\n" +
 	"\x05state\x18\x01 \x01(\x0e2%.runtimeenforcer.agent.v1.PolicyStateR\x05state\x128\n" +
@@ -286,9 +590,10 @@ const file_proto_agent_v1_agent_proto_rawDesc = "" +
 	"PolicyMode\x12\x1b\n" +
 	"\x17POLICY_MODE_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13POLICY_MODE_MONITOR\x10\x01\x12\x17\n" +
-	"\x13POLICY_MODE_PROTECT\x10\x022\x93\x01\n" +
+	"\x13POLICY_MODE_PROTECT\x10\x022\x84\x02\n" +
 	"\rAgentObserver\x12\x81\x01\n" +
-	"\x12ListPoliciesStatus\x123.runtimeenforcer.agent.v1.ListPoliciesStatusRequest\x1a4.runtimeenforcer.agent.v1.ListPoliciesStatusResponse\"\x00B>Z<github.com/neuvector/runtime-enforcer/proto/agent/v1;agentv1b\x06proto3"
+	"\x12ListPoliciesStatus\x123.runtimeenforcer.agent.v1.ListPoliciesStatusRequest\x1a4.runtimeenforcer.agent.v1.ListPoliciesStatusResponse\"\x00\x12o\n" +
+	"\fListPodCache\x12-.runtimeenforcer.agent.v1.ListPodCacheRequest\x1a..runtimeenforcer.agent.v1.ListPodCacheResponse\"\x00B>Z<github.com/neuvector/runtime-enforcer/proto/agent/v1;agentv1b\x06proto3"
 
 var (
 	file_proto_agent_v1_agent_proto_rawDescOnce sync.Once
@@ -303,27 +608,41 @@ func file_proto_agent_v1_agent_proto_rawDescGZIP() []byte {
 }
 
 var file_proto_agent_v1_agent_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_proto_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_proto_agent_v1_agent_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_proto_agent_v1_agent_proto_goTypes = []any{
 	(PolicyState)(0),                   // 0: runtimeenforcer.agent.v1.PolicyState
 	(PolicyMode)(0),                    // 1: runtimeenforcer.agent.v1.PolicyMode
-	(*ListPoliciesStatusRequest)(nil),  // 2: runtimeenforcer.agent.v1.ListPoliciesStatusRequest
-	(*PolicyStatus)(nil),               // 3: runtimeenforcer.agent.v1.PolicyStatus
-	(*ListPoliciesStatusResponse)(nil), // 4: runtimeenforcer.agent.v1.ListPoliciesStatusResponse
-	nil,                                // 5: runtimeenforcer.agent.v1.ListPoliciesStatusResponse.PoliciesEntry
+	(*ContainerMeta)(nil),              // 2: runtimeenforcer.agent.v1.ContainerMeta
+	(*PodMeta)(nil),                    // 3: runtimeenforcer.agent.v1.PodMeta
+	(*PodView)(nil),                    // 4: runtimeenforcer.agent.v1.PodView
+	(*ListPodCacheRequest)(nil),        // 5: runtimeenforcer.agent.v1.ListPodCacheRequest
+	(*ListPodCacheResponse)(nil),       // 6: runtimeenforcer.agent.v1.ListPodCacheResponse
+	(*ListPoliciesStatusRequest)(nil),  // 7: runtimeenforcer.agent.v1.ListPoliciesStatusRequest
+	(*PolicyStatus)(nil),               // 8: runtimeenforcer.agent.v1.PolicyStatus
+	(*ListPoliciesStatusResponse)(nil), // 9: runtimeenforcer.agent.v1.ListPoliciesStatusResponse
+	nil,                                // 10: runtimeenforcer.agent.v1.PodMeta.LabelsEntry
+	nil,                                // 11: runtimeenforcer.agent.v1.PodView.ContainersEntry
+	nil,                                // 12: runtimeenforcer.agent.v1.ListPoliciesStatusResponse.PoliciesEntry
 }
 var file_proto_agent_v1_agent_proto_depIdxs = []int32{
-	0, // 0: runtimeenforcer.agent.v1.PolicyStatus.state:type_name -> runtimeenforcer.agent.v1.PolicyState
-	1, // 1: runtimeenforcer.agent.v1.PolicyStatus.mode:type_name -> runtimeenforcer.agent.v1.PolicyMode
-	5, // 2: runtimeenforcer.agent.v1.ListPoliciesStatusResponse.policies:type_name -> runtimeenforcer.agent.v1.ListPoliciesStatusResponse.PoliciesEntry
-	3, // 3: runtimeenforcer.agent.v1.ListPoliciesStatusResponse.PoliciesEntry.value:type_name -> runtimeenforcer.agent.v1.PolicyStatus
-	2, // 4: runtimeenforcer.agent.v1.AgentObserver.ListPoliciesStatus:input_type -> runtimeenforcer.agent.v1.ListPoliciesStatusRequest
-	4, // 5: runtimeenforcer.agent.v1.AgentObserver.ListPoliciesStatus:output_type -> runtimeenforcer.agent.v1.ListPoliciesStatusResponse
-	5, // [5:6] is the sub-list for method output_type
-	4, // [4:5] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	10, // 0: runtimeenforcer.agent.v1.PodMeta.Labels:type_name -> runtimeenforcer.agent.v1.PodMeta.LabelsEntry
+	3,  // 1: runtimeenforcer.agent.v1.PodView.meta:type_name -> runtimeenforcer.agent.v1.PodMeta
+	11, // 2: runtimeenforcer.agent.v1.PodView.containers:type_name -> runtimeenforcer.agent.v1.PodView.ContainersEntry
+	4,  // 3: runtimeenforcer.agent.v1.ListPodCacheResponse.pods:type_name -> runtimeenforcer.agent.v1.PodView
+	0,  // 4: runtimeenforcer.agent.v1.PolicyStatus.state:type_name -> runtimeenforcer.agent.v1.PolicyState
+	1,  // 5: runtimeenforcer.agent.v1.PolicyStatus.mode:type_name -> runtimeenforcer.agent.v1.PolicyMode
+	12, // 6: runtimeenforcer.agent.v1.ListPoliciesStatusResponse.policies:type_name -> runtimeenforcer.agent.v1.ListPoliciesStatusResponse.PoliciesEntry
+	2,  // 7: runtimeenforcer.agent.v1.PodView.ContainersEntry.value:type_name -> runtimeenforcer.agent.v1.ContainerMeta
+	8,  // 8: runtimeenforcer.agent.v1.ListPoliciesStatusResponse.PoliciesEntry.value:type_name -> runtimeenforcer.agent.v1.PolicyStatus
+	7,  // 9: runtimeenforcer.agent.v1.AgentObserver.ListPoliciesStatus:input_type -> runtimeenforcer.agent.v1.ListPoliciesStatusRequest
+	5,  // 10: runtimeenforcer.agent.v1.AgentObserver.ListPodCache:input_type -> runtimeenforcer.agent.v1.ListPodCacheRequest
+	9,  // 11: runtimeenforcer.agent.v1.AgentObserver.ListPoliciesStatus:output_type -> runtimeenforcer.agent.v1.ListPoliciesStatusResponse
+	6,  // 12: runtimeenforcer.agent.v1.AgentObserver.ListPodCache:output_type -> runtimeenforcer.agent.v1.ListPodCacheResponse
+	11, // [11:13] is the sub-list for method output_type
+	9,  // [9:11] is the sub-list for method input_type
+	9,  // [9:9] is the sub-list for extension type_name
+	9,  // [9:9] is the sub-list for extension extendee
+	0,  // [0:9] is the sub-list for field type_name
 }
 
 func init() { file_proto_agent_v1_agent_proto_init() }
@@ -337,7 +656,7 @@ func file_proto_agent_v1_agent_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_agent_v1_agent_proto_rawDesc), len(file_proto_agent_v1_agent_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   4,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

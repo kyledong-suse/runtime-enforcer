@@ -8,6 +8,38 @@ option go_package = "github.com/neuvector/runtime-enforcer/proto/agent/v1;agentv
 service AgentObserver {
   // ListPoliciesStatus returns the status of workload Policies.
   rpc ListPoliciesStatus(ListPoliciesStatusRequest) returns (ListPoliciesStatusResponse) {}
+
+  // ListPodCache returns the current pod cache.
+  rpc ListPodCache(ListPodCacheRequest) returns (ListPodCacheResponse) {}
+}
+
+message ContainerMeta {
+	string ID = 1;
+	string Name = 2;
+	uint64 CgroupID = 3;
+}
+
+message PodMeta {
+	string ID = 1;
+	string Name = 2;
+	string Namespace = 3;
+	string WorkloadName = 4;
+	string WorkloadType = 5;
+	map<string,string> Labels = 6;
+}
+
+message PodView {
+  PodMeta meta = 1;
+  // The key is the container ID
+  map<string, ContainerMeta> containers = 2;
+}
+
+// ListPodCacheRequest is the request for listing the pod cache.
+message ListPodCacheRequest {}
+
+// ListPodCacheResponse is the response containing the pod cache.
+message ListPodCacheResponse {
+  repeated PodView pods = 1;
 }
 
 message ListPoliciesStatusRequest {}

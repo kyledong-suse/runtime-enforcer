@@ -45,3 +45,43 @@ func (s *agentObserver) ListPoliciesStatus(
 	s.logger.DebugContext(ctx, "listed tracing policies", "count", len(out.GetPolicies()))
 	return out, nil
 }
+
+func podViewToProto(podView *resolver.PodView) *pb.PodView {
+	view := &pb.PodView{
+		Meta: &pb.PodMeta{
+			ID:           podView.Meta.ID,
+			Name:         podView.Meta.Name,
+			Namespace:    podView.Meta.Namespace,
+			WorkloadName: podView.Meta.WorkloadName,
+			WorkloadType: podView.Meta.WorkloadType,
+			Labels:       podView.Meta.Labels,
+		},
+		Containers: make(map[string]*pb.ContainerMeta, len(podView.Containers)),
+	}
+	for containerID, containerMeta := range podView.Containers {
+		view.Containers[containerID] = &pb.ContainerMeta{
+			ID:       containerID,
+			Name:     containerMeta.Name,
+			CgroupID: containerMeta.CgroupID,
+		}
+	}
+	return view
+}
+
+// ListPodCache lists the current pod cache.
+func (s *agentObserver) ListPodCache(
+	ctx context.Context,
+	_ *pb.ListPodCacheRequest,
+) (*pb.ListPodCacheResponse, error) {
+	out := &pb.ListPodCacheResponse{
+		Pods: []*pb.PodView{},
+	}
+
+	snapshot := s.resolver.PodCacheSnapshot()
+	for _, podView := range snapshot {
+		out.Pods = append(out.Pods, podViewToProto(&podView))
+	}
+
+	s.logger.DebugContext(ctx, "listed pod cache", "count", len(out.GetPods()))
+	return out, nil
+}

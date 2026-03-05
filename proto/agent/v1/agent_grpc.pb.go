@@ -20,6 +20,7 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	AgentObserver_ListPoliciesStatus_FullMethodName = "/runtimeenforcer.agent.v1.AgentObserver/ListPoliciesStatus"
+	AgentObserver_ListPodCache_FullMethodName       = "/runtimeenforcer.agent.v1.AgentObserver/ListPodCache"
 )
 
 // AgentObserverClient is the client API for AgentObserver service.
@@ -30,6 +31,8 @@ const (
 type AgentObserverClient interface {
 	// ListPoliciesStatus returns the status of workload Policies.
 	ListPoliciesStatus(ctx context.Context, in *ListPoliciesStatusRequest, opts ...grpc.CallOption) (*ListPoliciesStatusResponse, error)
+	// ListPodCache returns the current pod cache.
+	ListPodCache(ctx context.Context, in *ListPodCacheRequest, opts ...grpc.CallOption) (*ListPodCacheResponse, error)
 }
 
 type agentObserverClient struct {
@@ -50,6 +53,16 @@ func (c *agentObserverClient) ListPoliciesStatus(ctx context.Context, in *ListPo
 	return out, nil
 }
 
+func (c *agentObserverClient) ListPodCache(ctx context.Context, in *ListPodCacheRequest, opts ...grpc.CallOption) (*ListPodCacheResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPodCacheResponse)
+	err := c.cc.Invoke(ctx, AgentObserver_ListPodCache_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AgentObserverServer is the server API for AgentObserver service.
 // All implementations must embed UnimplementedAgentObserverServer
 // for forward compatibility.
@@ -58,6 +71,8 @@ func (c *agentObserverClient) ListPoliciesStatus(ctx context.Context, in *ListPo
 type AgentObserverServer interface {
 	// ListPoliciesStatus returns the status of workload Policies.
 	ListPoliciesStatus(context.Context, *ListPoliciesStatusRequest) (*ListPoliciesStatusResponse, error)
+	// ListPodCache returns the current pod cache.
+	ListPodCache(context.Context, *ListPodCacheRequest) (*ListPodCacheResponse, error)
 	mustEmbedUnimplementedAgentObserverServer()
 }
 
@@ -70,6 +85,9 @@ type UnimplementedAgentObserverServer struct{}
 
 func (UnimplementedAgentObserverServer) ListPoliciesStatus(context.Context, *ListPoliciesStatusRequest) (*ListPoliciesStatusResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPoliciesStatus not implemented")
+}
+func (UnimplementedAgentObserverServer) ListPodCache(context.Context, *ListPodCacheRequest) (*ListPodCacheResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPodCache not implemented")
 }
 func (UnimplementedAgentObserverServer) mustEmbedUnimplementedAgentObserverServer() {}
 func (UnimplementedAgentObserverServer) testEmbeddedByValue()                       {}
@@ -110,6 +128,24 @@ func _AgentObserver_ListPoliciesStatus_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AgentObserver_ListPodCache_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPodCacheRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AgentObserverServer).ListPodCache(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AgentObserver_ListPodCache_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AgentObserverServer).ListPodCache(ctx, req.(*ListPodCacheRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AgentObserver_ServiceDesc is the grpc.ServiceDesc for AgentObserver service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -120,6 +156,10 @@ var AgentObserver_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListPoliciesStatus",
 			Handler:    _AgentObserver_ListPoliciesStatus_Handler,
+		},
+		{
+			MethodName: "ListPodCache",
+			Handler:    _AgentObserver_ListPodCache_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

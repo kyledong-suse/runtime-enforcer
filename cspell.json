@@ -84,6 +84,8 @@
 		"printk",
 		"ringbuf",
 		"cgtracker",
+		"runtimeenforcer",
+		"agentv1",
     ],
     "ignoreWords": [
         "clientgoscheme",
