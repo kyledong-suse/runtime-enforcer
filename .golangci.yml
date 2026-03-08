@@ -462,6 +462,10 @@ linters:
       - text: 'comment on exported \S+ \S+ should be of the form ".+"'
         source: '// ?(nolint|TODO)'
         linters: [ revive, staticcheck ]
+      # Disable recvcheck for api types, as generated OpenAPI model name code uses value receivers
+      - path: 'api/.*\.go$'
+        linters:
+          - recvcheck
       - path: '_test\.go'
         linters:
           - bodyclose
