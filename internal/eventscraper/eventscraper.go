@@ -10,7 +10,38 @@ import (
 	"github.com/rancher-sandbox/runtime-enforcer/internal/resolver"
 	"github.com/rancher-sandbox/runtime-enforcer/internal/violationbuf"
 	otellog "go.opentelemetry.io/otel/log"
+	"golang.org/x/time/rate"
 )
+
+const (
+	suppressionMsg        = "logs suppressed by rate limiting"
+	suppressedCountLogKey = "count"
+	suppressedLogTypeKey  = "log_type"
+	bufferFullMsg         = "violation buffer full, oldest entry dropped"
+)
+
+type logRateLimiter struct {
+	limiter    *rate.Limiter
+	suppressed int64
+}
+
+func (l *logRateLimiter) shouldLog() bool {
+	if !l.limiter.Allow() {
+		l.suppressed++
+		return false
+	}
+	return true
+}
+
+func (l *logRateLimiter) flushSuppressed(logger *slog.Logger, msg string) {
+	if l.suppressed > 0 {
+		logger.Warn(suppressionMsg,
+			suppressedCountLogKey, l.suppressed,
+			suppressedLogTypeKey, msg,
+		)
+		l.suppressed = 0
+	}
+}
 
 type EventScraper struct {
 	learningChannel     <-chan bpf.ProcessEvent
@@ -21,6 +52,7 @@ type EventScraper struct {
 	violationLogger     otellog.Logger
 	violationBuffer     *violationbuf.Buffer
 	nodeName            string
+	bufferFullLimiter   *logRateLimiter
 }
 
 type KubeProcessInfo struct {
@@ -67,6 +99,9 @@ func NewEventScraper(
 		logger:              logger,
 		resolver:            resolver,
 		learningEnqueueFunc: learningEnqueueFunc,
+		bufferFullLimiter: &logRateLimiter{
+			limiter: rate.NewLimiter(rate.Every(1*time.Second), 1),
+		},
 	}
 	for _, option := range opts {
 		option(es)
@@ -178,6 +213,9 @@ func (es *EventScraper) reportViolation(info *KubeProcessInfo, action string) {
 		Action:        action,
 	})
 	if dropped {
-		es.logger.Warn("violation buffer full, oldest entry dropped")
+		if es.bufferFullLimiter.shouldLog() {
+			es.bufferFullLimiter.flushSuppressed(es.logger, bufferFullMsg)
+			es.logger.Warn(bufferFullMsg)
+		}
 	}
 }
