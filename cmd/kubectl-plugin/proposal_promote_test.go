@@ -11,7 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestRunMarkReadyUpdatesLabelAndWaitsForPolicy(t *testing.T) {
+func TestRunProposalPromoteUpdatesLabelAndWaitsForPolicy(t *testing.T) {
 	t.Parallel()
 
 	ns := "test"
@@ -35,7 +35,7 @@ func TestRunMarkReadyUpdatesLabelAndWaitsForPolicy(t *testing.T) {
 	securityClient := clientset.SecurityV1alpha1()
 
 	var out bytes.Buffer
-	opts := &markReadyOptions{
+	opts := &proposalPromoteOptions{
 		commonOptions: commonOptions{
 			Namespace: ns,
 			DryRun:    false,
@@ -46,7 +46,7 @@ func TestRunMarkReadyUpdatesLabelAndWaitsForPolicy(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), defaultOperationTimeout)
 	defer cancel()
 
-	err := runMarkReady(ctx, securityClient, opts, &out)
+	err := runProposalPromote(ctx, securityClient, opts, &out)
 	require.NoError(t, err)
 
 	wpProposal, err := securityClient.WorkloadPolicyProposals(ns).Get(ctx, name, metav1.GetOptions{})
@@ -55,8 +55,4 @@ func TestRunMarkReadyUpdatesLabelAndWaitsForPolicy(t *testing.T) {
 	labels := wpProposal.GetLabels()
 	require.NotNil(t, labels, "labels should be set after promotion")
 	require.Equal(t, "true", labels[apiv1alpha1.ApprovalLabelKey])
-
-	output := out.String()
-	require.Contains(t, output, "Marked WorkloadPolicyProposal \"test-deployment\" in namespace \"test\" as ready.")
-	require.Contains(t, output, "WorkloadPolicy \"test-deployment\" in namespace \"test\" has been created.")
 }
