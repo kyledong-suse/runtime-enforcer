@@ -56,17 +56,17 @@ Based on these and the benchmark results, here is our recommendation.  Please co
 
 | #Workload + #WorkloadPolicies | Agent CPU Request/Limit (m) | Agent Memory Request/Limit (Mi) |
 | ----------------------------- | --------------------------- | ------------------------------- |
-| <2000 (small)                 | 500                         | 256                             |
-| 2000~4000 (medium)            | 500                         | 512                             |
-| >4000 (large)                 | 500 or more                 | 768 or more                     |
+| <2000 (small)                 | 250                         | 256                             |
+| 2000~4000 (medium)            | 250                         | 512                             |
+| >4000 (large)                 | 250 or more                 | 768 or more                     |
 
 ### Controller
 
 | #Workload + #WorkloadPolicies | Controller CPU Request/Limit (m) | Controller Memory Request/Limit (Mi) |
 | ----------------------------- | -------------------------------- | ------------------------------------ |
-| <2000 (small)                 | 500                              | 256                                  |
-| 2000~4000 (medium)            | 500                              | 512                                  |
-| >4000 (large)                 | 500 or more                      | 768 or more                          |
+| <2000 (small)                 | 250                              | 256                                  |
+| 2000~4000 (medium)            | 250                              | 512                                  |
+| >4000 (large)                 | 250 or more                      | 768 or more                          |
 
 ## Benchmark Results v0.6.0
 
