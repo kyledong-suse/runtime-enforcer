@@ -59,7 +59,7 @@ func getEnforcementOnNewPodsTest() types.Feature {
 						Allowed:  true,
 					},
 					{
-						Commands: []string{"/usr/bin/apt", "update"},
+						Commands: []string{"/usr/bin/zypper", "refresh"},
 						Allowed:  false,
 					},
 				}

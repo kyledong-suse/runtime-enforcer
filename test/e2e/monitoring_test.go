@@ -69,7 +69,7 @@ func getMonitoringTest() types.Feature {
 					t,
 					expectedPodName,
 					"ubuntu",
-					[]string{"/usr/bin/sh", "-c", "/usr/bin/apt update"},
+					[]string{"/usr/bin/sh", "-c", "/usr/bin/zypper refresh"},
 				)
 
 				t.Log("waiting for violations to appear in WorkloadPolicy status")
@@ -88,7 +88,7 @@ func getMonitoringTest() types.Feature {
 						return false
 					}
 					for _, v := range wp.Status.Violations {
-						if v.ExecutablePath == "/usr/bin/apt" &&
+						if v.ExecutablePath == "/usr/bin/zypper" &&
 							v.Action == policymode.MonitorString &&
 							v.PodName == expectedPodName {
 							return true
@@ -96,7 +96,7 @@ func getMonitoringTest() types.Feature {
 					}
 					return false
 				}), wait.WithTimeout(defaultOperationTimeout))
-				require.NoError(t, err, "violation for /usr/bin/apt should appear in WorkloadPolicy status")
+				require.NoError(t, err, "violation for /usr/bin/zypper should appear in WorkloadPolicy status")
 
 				t.Log("verifying violation record details")
 				err = r.Get(ctx, "test-policy", getNamespace(ctx), policyToCheck)
@@ -105,14 +105,14 @@ func getMonitoringTest() types.Feature {
 
 				var found bool
 				for _, v := range policyToCheck.Status.Violations {
-					if v.ExecutablePath == "/usr/bin/apt" {
+					if v.ExecutablePath == "/usr/bin/zypper" {
 						assert.Equal(t, policymode.MonitorString, v.Action)
 						assert.Equal(t, expectedPodName, v.PodName)
 						found = true
 						break
 					}
 				}
-				assert.True(t, found, "should find violation record for /usr/bin/apt")
+				assert.True(t, found, "should find violation record for /usr/bin/zypper")
 				return ctx
 			}).
 		Teardown(func(ctx context.Context, t *testing.T, _ *envconf.Config) context.Context {
