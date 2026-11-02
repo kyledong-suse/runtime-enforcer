@@ -12,7 +12,7 @@ repos:
         language_version: 1.26.5
         stages: [pre-commit]
   - repo: https://github.com/cpp-linter/cpp-linter-hooks
-    rev: 3f77c32767c2bcc3b3f8325e0332821c7231720a # v1.8.1
+    rev: a4d15e4622400766d20373ca7c87eabe44f33c2f # v1.8.2
     hooks:
       - id: clang-format
         args:
